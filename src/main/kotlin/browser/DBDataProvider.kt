@@ -68,7 +68,7 @@ class DBDataProvider(private val dbFile: DBFile) {
         } else {
             logger.debug { "Searched files with keyword $keyword of all UDisk" }
             // TODO: implement search files of all UDisk
-            logger.warn { "Search files of all UDisk is not implemented yet" }
+            logger.error { "Search files of all UDisk is not implemented yet" }
             return emptyList()
         }
     }

@@ -12,7 +12,8 @@ import java.io.File
 import java.nio.charset.Charset
 
 object WorkDir {
-    val globalServiceConfig = ServiceConfig.getConfig("/home/octest/Myself/Project/UDTProjects/DataDir/SeewoTest")//TODO
+    private val udtHome = System.getProperty("UDT_Browser_HOME")
+    val globalServiceConfig = ServiceConfig.getConfig(udtHome?:"/home/octest/Myself/Project/UDTProjects/DataDir/SeewoTest")//TODO
 //    val globalServiceConfig = ServiceConfig.getConfig("D:/UDTProject/UDT/UDTService")//TODO
 
     fun saveServiceConfig() {
