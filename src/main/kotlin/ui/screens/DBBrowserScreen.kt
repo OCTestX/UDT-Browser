@@ -27,9 +27,7 @@ import browser.models.VirFile
 import browser.models.VirUdisk
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
-import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
-import io.github.vinceglb.filekit.core.PickerMode
-import io.github.vinceglb.filekit.core.PickerType
+import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,7 +36,6 @@ import logger
 import toast
 import ui.component.ToastModel
 import ui.core.UIComponent
-import ui.screens.LoadDBScreen.ScannerAction
 import ui.utils.Animates
 import utils.*
 import java.io.File
@@ -56,6 +53,9 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         val currentParentDir: VirDir?,
         val fileCardMinWidth: Int,
         val scrollOffset: Int,
+        val touchOptimized: Boolean,
+        val searchingKeyword: String,
+        val searchingMode: Boolean,
         val loading: Boolean,
         action: (DBBrowserScreenAction) -> Unit
     ) : UIState<DBBrowserScreenAction>(action)
@@ -66,15 +66,16 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         data class OpenFile(val file: VirFile): DBBrowserScreenAction()
         data object SwitchDirToHome: DBBrowserScreenAction()
         data class ChangeCustomName(val customName: String): DBBrowserScreenAction()
+        data class ChangeSearchingKeyword(val keyword: String): DBBrowserScreenAction()
+        data class SwitchSearchingMode(val searchingMode: Boolean): DBBrowserScreenAction()
+        data class Search(val keyword: String): DBBrowserScreenAction()
     }
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
     override fun UI(state: DBBrowserScreenState) {
         var selectStorageDirVisible by remember { mutableStateOf(false) }
-        val selectedStorageDirLauncher = rememberFilePickerLauncher(
-            type = PickerType.File(extensions = listOf("db")),
-            mode = PickerMode.Single,
+        val selectedStorageDirLauncher = rememberDirectoryPickerLauncher(
             title = "选择文件存储库",
         ) { selectedFile ->
             // Handle the picked files
@@ -119,7 +120,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 DialogWindow(onCloseRequest = {
                     selectStorageDirVisible = false
                 }, visible = selectStorageDirVisible) {
-                    var pathStr by remember { mutableStateOf(dbProject.storageDir?: "") }
+                    var pathStr by remember(dbProject.storageDir) { mutableStateOf(dbProject.storageDir?: "") }
                     Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
                         Text("选择文件存储库位置", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), fontSize = MaterialTheme.typography.titleLarge.fontSize)
                         TextField(pathStr, { pathStr = it }, modifier = Modifier.fillMaxWidth().padding(16.dp))
@@ -165,6 +166,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 Row(modifier = Modifier.fillMaxSize()) {
+                    val listDirsAndFilesScrollState = rememberLazyGridState()
                     AnimatedVisibility(state.currentParentDir?.isRoot == true || state.currentParentDir == null) {
                         Animates.VisibilityAnimates {
                             val disksScrollState = rememberLazyListState()
@@ -184,13 +186,36 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
 //                                style = LocalScrollbarStyle.current.copy(unhoverColor = MaterialTheme.colorScheme.primary, hoverColor = MaterialTheme.colorScheme.inversePrimary)
 //                            )
                                 }
-                                Row(modifier = Modifier.padding(6.dp)) {
-                                    IconButton(onClick = {
-                                        scope.launch {
-                                            disksScrollState.animateScrollToItem(disksScrollState.firstVisibleItemIndex, disksScrollState.firstVisibleItemScrollOffset + state.scrollOffset)
+                                AnimatedVisibility(state.touchOptimized) {
+                                    Row(modifier = Modifier.padding(6.dp)) {
+                                        IconButton(onClick = {
+                                            scope.launch {
+                                                disksScrollState.animateScrollToItem(disksScrollState.firstVisibleItemIndex, disksScrollState.firstVisibleItemScrollOffset - state.scrollOffset)
+                                            }
+                                        }) {
+                                            Icon(TablerIcons.ArrowUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                         }
-                                    }) {
-                                        Icon(TablerIcons.ArrowUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        IconButton(onClick = {
+                                            scope.launch {
+                                                disksScrollState.animateScrollToItem(disksScrollState.firstVisibleItemIndex, disksScrollState.firstVisibleItemScrollOffset + state.scrollOffset)
+                                            }
+                                        }) {
+                                            Icon(TablerIcons.ArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                        IconButton(onClick = {
+                                            scope.launch {
+                                                listDirsAndFilesScrollState.animateScrollToItem(listDirsAndFilesScrollState.firstVisibleItemIndex, listDirsAndFilesScrollState.firstVisibleItemScrollOffset - state.scrollOffset)
+                                            }
+                                        }) {
+                                            Icon(TablerIcons.ArrowUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                        IconButton(onClick = {
+                                            scope.launch {
+                                                listDirsAndFilesScrollState.animateScrollToItem(listDirsAndFilesScrollState.firstVisibleItemIndex, listDirsAndFilesScrollState.firstVisibleItemScrollOffset + state.scrollOffset)
+                                            }
+                                        }) {
+                                            Icon(TablerIcons.ArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
                                     }
                                 }
                             }
@@ -198,7 +223,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                     }
                     Animates.VisibilityAnimates {
                         Row (modifier = Modifier.weight(1f).animateContentSize()) {
-                            LazyVerticalGrid(columns = GridCells.Adaptive(state.fileCardMinWidth.dp), modifier = Modifier.weight(1f)) {
+                            LazyVerticalGrid(columns = GridCells.Adaptive(state.fileCardMinWidth.dp), modifier = Modifier.weight(1f), state = listDirsAndFilesScrollState) {
                                 items(state.currentDirs, key = { it.dirId }) { dir ->
                                     UDirCard(dir, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
                                         state.action(DBBrowserScreenAction.SwitchDir(dir))
@@ -222,23 +247,38 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun TitleBar(state: DBBrowserScreenState) {
         Row {
-            val enable = state.currentParentDir?.isRoot != true
-            IconButton(onClick = {
-                state.action(DBBrowserScreenAction.Back)
-            }, enabled = enable) {
-                Icon(TablerIcons.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = if (enable) 1f else 0.45f))
-            }
-            IconButton(onClick = {
-                state.action(DBBrowserScreenAction.SwitchDirToHome)
-            }, enabled = enable) {
-                Icon(TablerIcons.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = if (enable) 1f else 0.45f))
-            }
-            val path = remember(state.currentParentDir) { state.currentParentDir?.path?:"/" }
-            AnimatedContent(path, modifier = Modifier.weight(1f).align(Alignment.CenterVertically)) { currentPath ->
-                Text(currentPath, fontSize = MaterialTheme.typography.titleSmall.fontSize, color = MaterialTheme.colorScheme.primary)
+            Checkbox(state.searchingMode, onCheckedChange = { state.action(DBBrowserScreenAction.SwitchSearchingMode(it)) })
+            Text("搜索模式", modifier = Modifier.align(Alignment.CenterVertically), fontSize = MaterialTheme.typography.titleSmall.fontSize)
+
+            AnimatedContent(state.searchingMode) {
+                Row(Modifier.weight(1f).align(Alignment.CenterVertically)) {
+                    if (it) {
+                        TextField(state.searchingKeyword, {
+                            state.action(DBBrowserScreenAction.ChangeSearchingKeyword(it))
+                            state.action(DBBrowserScreenAction.Search(it))
+                        }, modifier = Modifier.weight(1f).padding(horizontal = 6.dp).align(Alignment.CenterVertically))
+                    } else {
+                        val enable = state.currentParentDir?.isRoot != true
+                        IconButton(onClick = {
+                            state.action(DBBrowserScreenAction.Back)
+                        }, enabled = enable) {
+                            Icon(TablerIcons.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = if (enable) 1f else 0.45f))
+                        }
+                        IconButton(onClick = {
+                            state.action(DBBrowserScreenAction.SwitchDirToHome)
+                        }, enabled = enable) {
+                            Icon(TablerIcons.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = if (enable) 1f else 0.45f))
+                        }
+                        val path = remember(state.currentParentDir) { state.currentParentDir?.path?:"/" }
+                        AnimatedContent(path, modifier = Modifier.weight(1f).align(Alignment.CenterVertically)) { currentPath ->
+                            Text(currentPath, fontSize = MaterialTheme.typography.titleSmall.fontSize, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
             }
         }
     }
@@ -331,6 +371,9 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         private var currentParentDir by mutableStateOf<VirDir?>(null)
         private var fileCardMinWidth by WorkDir.globalServiceConfig.fileCardMinWidth
         private var scrollOffset by WorkDir.globalServiceConfig.scrollOffset
+        private var touchOptimized by WorkDir.globalServiceConfig.touchOptimized
+        private var currentSearchingMode by mutableStateOf(false)
+        private var currentSearchingKeyword by mutableStateOf("")
         private var loading by mutableStateOf(false)
 
         @Composable
@@ -366,6 +409,9 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 currentParentDir,
                 fileCardMinWidth,
                 scrollOffset,
+                touchOptimized,
+                currentSearchingKeyword,
+                currentSearchingMode,
                 loading,
                 action = { action ->
                     when (action) {
@@ -439,9 +485,42 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                                 dbProject.save()
                             }
                         }
+
+                        is DBBrowserScreenAction.ChangeSearchingKeyword -> {
+                            currentSearchingKeyword = action.keyword
+                        }
+
+                        is DBBrowserScreenAction.SwitchSearchingMode -> {
+                            currentSearchingMode = action.searchingMode
+                            if (currentSearchingMode) {
+                                currentFiles.clear()
+                                currentDirs.clear()
+                                ioScope.launch {
+                                    loadSearchFiles(currentUDisk?.udiskId, currentSearchingKeyword)
+                                }
+                            } else {
+                                ioScope.launch {
+                                    loadDirData(currentUDisk!!, currentParentDir!!)
+                                }
+                            }
+                        }
+
+                        is DBBrowserScreenAction.Search -> {
+                            ioScope.launch {
+                                loadSearchFiles(currentUDisk?.udiskId, action.keyword)
+                            }
+                        }
                     }
                 }
             )
+        }
+
+        private suspend fun loadSearchFiles(udiskId: String?, keyword: String) {
+            val files = dbDataProvider.searchFiles(udiskId, keyword)
+            scope.launch {
+                currentFiles.clear()
+                currentFiles.addAll(files)
+            }
         }
 
         private suspend fun loadRootDir(udisk: VirUdisk): VirDir {
@@ -453,6 +532,9 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
 
         private val lock = ReentrantLock()
         private suspend fun loadDirData(udisk: VirUdisk, dir: VirDir) {
+            // 搜索模式下不检索当前u盘，文件夹内数据
+            if (currentSearchingMode) return
+
             lock.lock()
             loading = true
             logger.info("Loading data for udisk ${udisk.name} and dir ${dir.path}[${dir.dirId}]")

@@ -70,10 +70,10 @@ class Project(
             if (sourceFile.exists()) {
                 return sourceFile
             } else {
-                throw FileNotFoundException("Storage dir not exists, please select again.")
+                throw FileNotFoundException("文件库中不存在你要打开的文件，请确认文件库是否正确")
             }
         } else {
-            throw FileNotFoundException("Please select storage dir, first.")
+            throw FileNotFoundException("请先选择文件库")
         }
     }
     override suspend fun getFileInputStream(udiskId: String, fileId: String): InputStream {

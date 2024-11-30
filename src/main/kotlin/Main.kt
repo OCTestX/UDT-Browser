@@ -244,6 +244,10 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                 var dirSizeEachCountAnimateDelay by remember { WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay }
                 Slider(dirSizeEachCountAnimateDelay.toFloat(), onValueChange = { dirSizeEachCountAnimateDelay = it.toLong() }, valueRange = 0f..1000f, steps = 100, colors = SliderDefaults.colors())
 
+                Text("触控屏优化")
+                var touchOptimized by remember { WorkDir.globalServiceConfig.touchOptimized }
+                Switch(touchOptimized, onCheckedChange = { touchOptimized = it })
+
                 Button(onClick = {
                     WorkDir.globalServiceConfig.windowSize.value = Pair(MainWindowState.size.width.value.toInt(), MainWindowState.size.height.value.toInt())
                     WorkDir.saveServiceConfig()

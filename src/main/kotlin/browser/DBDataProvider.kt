@@ -50,6 +50,29 @@ class DBDataProvider(private val dbFile: DBFile) {
         }.first()
     }
 
+    fun searchFiles(usbId: String?, keyword: String): List<VirFile> {
+        return if (usbId != null) {
+            logger.debug { "Searched files with keyword $keyword of UDisk with id $usbId" }
+            val table = UsbFilesTable(usbId)
+            dbFile.db.from(table).select().where {
+                table.fpath like "%$keyword%"
+            }.map {
+                VirFile(
+                    it[table.fpath]!!.split("/").last(),
+                    it[table.parentDirId]!!,
+                    usbId,
+                    it[table.size]!!,
+                    it[table.fileId]!!,
+                )
+            }
+        } else {
+            logger.debug { "Searched files with keyword $keyword of all UDisk" }
+            // TODO: implement search files of all UDisk
+            logger.warn { "Search files of all UDisk is not implemented yet" }
+            return emptyList()
+        }
+    }
+
     fun getDirFiles(usbId: String, dirId: String): List<VirFile> {
         logger.debug { "Getting files of directory with id $dirId of UDisk with id $usbId" }
         val table = UsbFilesTable(usbId)
