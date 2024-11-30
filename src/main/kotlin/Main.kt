@@ -1,8 +1,8 @@
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -38,11 +39,15 @@ import utils.ListItemIterable
 import utils.TmpStorage
 
 lateinit var toast: ToastUIState
-val LocalTopTitleBarState = compositionLocalOf<Main.TopTitleBarState?> { null }
-
+val LocalMainTopTitleBarState = compositionLocalOf<Main.MainTopTitleBarState?> { null }
+private val MainWindowState: WindowState = WindowState(width = WorkDir.globalServiceConfig.windowSize.value.first.dp, height = WorkDir.globalServiceConfig.windowSize.value.second.dp)
 fun main() = application {
     Core.init()
-    Window(onCloseRequest = ::exitApplication) {
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "UDTBrowser",
+        state = MainWindowState
+    ) {
         Main.Main()
         toast = remember { ToastUIState() }
         ToastUI(toast)
@@ -64,9 +69,9 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
         data object SwitchTheme : AppAction()
     }
 
-    enum class HyperShareScreen(val title: String) {
-        LoadDBScreen("载入U盘小偷数据库"),
-        DBBrowserScreen("数据管理"),
+    enum class HyperShareScreen() {
+        LoadDBScreen,
+        DBBrowserScreen,
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +94,7 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
 //                            }
 //                        )
                     }) { innerPadding ->
-                        CompositionLocalProvider(LocalTopTitleBarState provides TopTitleBarState(
+                        CompositionLocalProvider(LocalMainTopTitleBarState provides MainTopTitleBarState(
                             state.currentScreen,
                             state.canNavigateBack,
                             navigateUp = {
@@ -168,7 +173,7 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
         }
     }
 
-    data class TopTitleBarState(
+    data class MainTopTitleBarState(
         val currentScreen: HyperShareScreen,
         val canNavigateBack: Boolean,
         val navigateUp: () -> Unit,
@@ -177,12 +182,17 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
 
     @Composable
     fun GlobalTopAppBar(
-        state: TopTitleBarState,
+        title: String,
+        state: MainTopTitleBarState,
         modifier: Modifier = Modifier,
         actions: @Composable RowScope.() -> Unit = {}
     ) {
         CenterAlignedTopAppBar(
-            title = { Text(state.currentScreen.title, color = MaterialTheme.colorScheme.primary) },
+            title = {
+                AnimatedContent(title) {
+                    Text(it, color = MaterialTheme.colorScheme.primary)
+                }
+            },
             modifier = modifier,
             navigationIcon = {
                 Row {
@@ -217,6 +227,30 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                     modifier = Modifier.padding(20.dp).size(145.dp).align(Alignment.CenterHorizontally).clip(MaterialTheme.shapes.large).border(3.dp, MaterialTheme.colorScheme.primary, shape = MaterialTheme.shapes.large)
                 )
                 Text("Code by OCTest", modifier = Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(16.dp))
+
+
+                Text("Settings", fontSize = MaterialTheme.typography.labelLarge.fontSize, color = MaterialTheme.colorScheme.primary)
+
+                Text("调节文件项最小宽度: ${WorkDir.globalServiceConfig.fileCardMinWidth.value}dp")
+                var fileItemMinWidth by remember { WorkDir.globalServiceConfig.fileCardMinWidth }
+                Slider(fileItemMinWidth.toFloat(), onValueChange = { fileItemMinWidth = it.toInt() }, valueRange = 50f..1000f, steps = 25, colors = SliderDefaults.colors())
+
+                Text("调节滚动按钮单次滚动的距离: ${WorkDir.globalServiceConfig.scrollOffset.value}")
+                var scrollOffset by remember { WorkDir.globalServiceConfig.scrollOffset }
+                Slider(scrollOffset.toFloat(), onValueChange = { scrollOffset = it.toInt() }, valueRange = 150f..1000f, steps = 50, colors = SliderDefaults.colors())
+
+                Text("调节目录大小遍历统计动画延迟: ${WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay.value}ms")
+                var dirSizeEachCountAnimateDelay by remember { WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay }
+                Slider(dirSizeEachCountAnimateDelay.toFloat(), onValueChange = { dirSizeEachCountAnimateDelay = it.toLong() }, valueRange = 0f..1000f, steps = 100, colors = SliderDefaults.colors())
+
+                Button(onClick = {
+                    WorkDir.globalServiceConfig.windowSize.value = Pair(MainWindowState.size.width.value.toInt(), MainWindowState.size.height.value.toInt())
+                    WorkDir.saveServiceConfig()
+                    toast.applyShow("保存成功")
+                }) {
+                    Text("保存")
+                }
             }
             Row(Modifier.padding(12.dp)) {
                 IconButton(onClick = {

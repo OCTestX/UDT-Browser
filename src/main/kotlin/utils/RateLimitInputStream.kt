@@ -8,9 +8,9 @@ class RateLimitInputStream(`in`: InputStream, private val speed: Long) : FilterI
     private val speedBySecond = if (speed < 0) {
         Long.MAX_VALUE
     } else speed
-    var startTime = System.nanoTime()
-    var spend = 0L
-    fun checkTime(): Long? {
+    private var startTime = System.nanoTime()
+    private var spend = 0L
+    private fun checkTime(): Long? {
         //重置带宽
         val t = System.nanoTime() - startTime
         return if (t >= 1000000000) {
@@ -19,7 +19,7 @@ class RateLimitInputStream(`in`: InputStream, private val speed: Long) : FilterI
             null
         } else ((1000000000 - t) / 1000000)
     }
-    fun checkSpend() {
+    private fun checkSpend() {
         if (spend >= speedBySecond) {
             val sleep = checkTime()
             sleep?.let {

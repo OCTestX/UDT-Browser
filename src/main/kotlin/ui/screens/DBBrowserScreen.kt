@@ -1,23 +1,17 @@
 package ui.screens
 
-import LocalTopTitleBarState
+import LocalMainTopTitleBarState
 import Main
 import WorkDir
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
+import browser.AbsProject
 import browser.DBDataProvider
 import browser.Project
 import browser.models.VirDir
@@ -32,19 +27,25 @@ import browser.models.VirFile
 import browser.models.VirUdisk
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
+import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.core.PickerMode
+import io.github.vinceglb.filekit.core.PickerType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import logger
 import toast
 import ui.component.ToastModel
 import ui.core.UIComponent
+import ui.screens.LoadDBScreen.ScannerAction
 import ui.utils.Animates
 import utils.*
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.locks.ReentrantLock
 
-class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScreen.DBBrowserScreenAction, DBBrowserScreen.DBBrowserScreenState>() {
+class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserScreen.DBBrowserScreenAction, DBBrowserScreen.DBBrowserScreenState>() {
     private val dbFile = dbProject.dbFile
     private val dbDataProvider = DBDataProvider(dbFile)
     class DBBrowserScreenState(
@@ -53,6 +54,9 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
         val currentFiles: List<VirFile>,
         val currentDirs: List<VirDir>,
         val currentParentDir: VirDir?,
+        val fileCardMinWidth: Int,
+        val scrollOffset: Int,
+        val loading: Boolean,
         action: (DBBrowserScreenAction) -> Unit
     ) : UIState<DBBrowserScreenAction>(action)
     sealed class DBBrowserScreenAction: UIAction() {
@@ -61,39 +65,94 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
         data class SwitchDir(val dir: VirDir): DBBrowserScreenAction()
         data class OpenFile(val file: VirFile): DBBrowserScreenAction()
         data object SwitchDirToHome: DBBrowserScreenAction()
+        data class ChangeCustomName(val customName: String): DBBrowserScreenAction()
     }
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
     override fun UI(state: DBBrowserScreenState) {
-        Column {
-            var selectStorageDirVisible by remember { mutableStateOf(false) }
-            DialogWindow(onCloseRequest = {
+        var selectStorageDirVisible by remember { mutableStateOf(false) }
+        val selectedStorageDirLauncher = rememberFilePickerLauncher(
+            type = PickerType.File(extensions = listOf("db")),
+            mode = PickerMode.Single,
+            title = "选择文件存储库",
+        ) { selectedFile ->
+            // Handle the picked files
+            if (selectedFile != null) {
+                val file = selectedFile.file
+                if (file.exists()) {
+                    (dbProject as Project).storageDir = file.absolutePath
+                    dbProject.save()
+                }
                 selectStorageDirVisible = false
-            }, visible = selectStorageDirVisible) {
-                var pathStr by remember { mutableStateOf(dbProject.storageDir?: "") }
-                Column {
-                    TextField(pathStr, { pathStr = it })
-                    Button(onClick = {
-                        val file = File(pathStr)
-                        if (file.exists()) {
-                            dbProject.storageDir = file.absolutePath
-                            dbProject.save()
-                        }
-                        selectStorageDirVisible = false
-                    }) {
-                        Text("Confirm")
+            }
+        }
+        Column {
+            var setCustomNameVisible by remember { mutableStateOf(false) }
+            if (dbProject is Project) {
+                DialogWindow(onCloseRequest = {
+                    setCustomNameVisible = false
+                }, visible = setCustomNameVisible) {
+                    var customName by remember(state.currentUDisk) {
+                        val udiskId = state.currentUDisk?.udiskId
+                        val rawName = state.currentUDisk?.name?:"未知u盘"
+                        mutableStateOf(dbProject.getCustomUDiskName(udiskId?:"未知u盘")?: rawName)
                     }
-                    Button(onClick = {
-                        selectStorageDirVisible = false
-                    }) {
-                        Text("Cancel")
+                    Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
+                        Text("设置自定义名称", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        TextField(customName, { customName = it }, modifier = Modifier.fillMaxWidth().padding(16.dp))
+                        Row(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Button(onClick = {
+                                state.action(DBBrowserScreenAction.ChangeCustomName(customName))
+                                setCustomNameVisible = false
+                            }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                                Text("保存")
+                            }
+                            Button(onClick = {
+                                setCustomNameVisible = false
+                            }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                                Text("取消")
+                            }
+                        }
                     }
                 }
-            }
-            Main.GlobalTopAppBar(LocalTopTitleBarState.current!!) {
-                val storageDir= dbProject.storageDir
-                if (storageDir == null || File(storageDir).exists().not()) {
+                DialogWindow(onCloseRequest = {
+                    selectStorageDirVisible = false
+                }, visible = selectStorageDirVisible) {
+                    var pathStr by remember { mutableStateOf(dbProject.storageDir?: "") }
+                    Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
+                        Text("选择文件存储库位置", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        TextField(pathStr, { pathStr = it }, modifier = Modifier.fillMaxWidth().padding(16.dp))
+                        Row(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Button(onClick = {
+                                selectedStorageDirLauncher.launch()
+                            }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                                Text("选择")
+                            }
+                            Button(onClick = {
+                                val file = File(pathStr)
+                                if (file.exists()) {
+                                    dbProject.storageDir = file.absolutePath
+                                    dbProject.save()
+                                }
+                                selectStorageDirVisible = false
+                            }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                                Text("保存")
+                            }
+                            Button(onClick = {
+                                selectStorageDirVisible = false
+                            }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                                Text("取消")
+                            }
+                        }
+                    }
+                }
+                Main.GlobalTopAppBar(getTitle(state.currentUDisk), LocalMainTopTitleBarState.current!!) {
+                    IconButton(onClick = {
+                        setCustomNameVisible = true
+                    }) {
+                        Icon(TablerIcons.EditCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = {
                         selectStorageDirVisible = true
                     }) {
@@ -104,34 +163,60 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
             Animates.VisibilityAnimates {
                 TitleBar(state)
             }
-            Row(modifier = Modifier.fillMaxSize()) {
-                AnimatedVisibility(state.currentParentDir?.isRoot == true || state.currentParentDir == null) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    AnimatedVisibility(state.currentParentDir?.isRoot == true || state.currentParentDir == null) {
+                        Animates.VisibilityAnimates {
+                            val disksScrollState = rememberLazyListState()
+                            Column {
+                                Row(modifier = Modifier.width(200.dp).animateContentSize().weight(1f)) {
+                                    LazyColumn(Modifier.weight(1f), state = disksScrollState) {
+                                        items(state.allUdisks, key = { it.udiskId }) { udisk ->
+                                            UDiskCard(udisk, modifier = Modifier.animateItemPlacement().padding(6.dp).clickable {
+                                                state.action(DBBrowserScreenAction.SelectUdisk(udisk))
+                                            })
+                                        }
+                                    }
+//                            // 滚动条
+//                            VerticalScrollbar(
+//                                modifier = Modifier.fillMaxHeight(),
+//                                adapter = rememberScrollbarAdapter(disksScrollState),
+//                                style = LocalScrollbarStyle.current.copy(unhoverColor = MaterialTheme.colorScheme.primary, hoverColor = MaterialTheme.colorScheme.inversePrimary)
+//                            )
+                                }
+                                Row(modifier = Modifier.padding(6.dp)) {
+                                    IconButton(onClick = {
+                                        scope.launch {
+                                            disksScrollState.animateScrollToItem(disksScrollState.firstVisibleItemIndex, disksScrollState.firstVisibleItemScrollOffset + state.scrollOffset)
+                                        }
+                                    }) {
+                                        Icon(TablerIcons.ArrowUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Animates.VisibilityAnimates {
-                        LazyColumn(modifier = Modifier.width(200.dp).animateContentSize()) {
-                            items(state.allUdisks, key = { it.udiskId }) { udisk ->
-                                UDiskCard(udisk, modifier = Modifier.animateItemPlacement().padding(6.dp).clickable {
-                                    state.action(DBBrowserScreenAction.SelectUdisk(udisk))
-                                })
+                        Row (modifier = Modifier.weight(1f).animateContentSize()) {
+                            LazyVerticalGrid(columns = GridCells.Adaptive(state.fileCardMinWidth.dp), modifier = Modifier.weight(1f)) {
+                                items(state.currentDirs, key = { it.dirId }) { dir ->
+                                    UDirCard(dir, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
+                                        state.action(DBBrowserScreenAction.SwitchDir(dir))
+                                    })
+                                }
+                                items(state.currentFiles, key = { it.fileId }) { file ->
+                                    UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
+                                        state.action(DBBrowserScreenAction.OpenFile(file))
+                                    })
+                                }
                             }
                         }
                     }
                 }
-                Animates.VisibilityAnimates {
-                    LazyVerticalGrid(columns = GridCells.Adaptive(180.dp), modifier = Modifier.weight(1f).animateContentSize()) {
-                        items(state.currentDirs, key = { it.dirId }) { dir ->
-                            UDirCard(dir, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
-                                state.action(DBBrowserScreenAction.SwitchDir(dir))
-                            })
-                        }
-                        items(state.currentFiles, key = { it.fileId }) { file ->
-                            UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
-                                state.action(DBBrowserScreenAction.OpenFile(file))
-                            })
-                        }
+                if (state.loading) {
+                    Animates.VisibilityAnimates {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
-//                    LazyColumn(modifier = Modifier.weight(1f).animateContentSize()) {
-//
-//                    }
                 }
             }
         }
@@ -168,7 +253,13 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
                 Row(Modifier.fillMaxWidth()) {
                     Icon(TablerIcons.BoxModel, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f)) {
-                        Text(disk.name, fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        if (dbProject is Project) {
+                            AnimatedContent(dbProject.getCustomUDiskNameState(disk.udiskId)?: disk.name) {
+                                Text(it, fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                            }
+                        } else {
+                            Text(disk.name, fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        }
                         Text("${fileSize(disk.totalSize - disk.freeSize)} / ${fileSize(disk.totalSize)}", fontSize = MaterialTheme.typography.bodySmall.fontSize)
                     }
                 }
@@ -189,14 +280,25 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
                         Text(dir.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
                     }
                 }
+
+                var countingSize by rememberSaveable { mutableStateOf(true) }
                 val size by produceState(0L) {
                     withContext(Dispatchers.IO) {
                         dbDataProvider.deepCountDirSize(dir.udiskId, dir.dirId) {
                             value = it
+                            delay(WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay.value)
+                        }
+                        countingSize = false
+                    }
+                }
+                Animates.VisibilityAnimates {
+                    Column {
+                        Text(fileSize(size))
+                        AnimatedVisibility(countingSize) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
                         }
                     }
                 }
-                Text(fileSize(size))
             }
         }
     }
@@ -214,7 +316,9 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
                         Text(file.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
                     }
                 }
-                Text(fileSize(file.size))
+                Animates.VisibilityAnimates {
+                    Text(fileSize(file.size))
+                }
             }
         }
     }
@@ -225,6 +329,9 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
         private val currentFiles = mutableStateListOf<VirFile>()
         private val currentDirs = mutableStateListOf<VirDir>()
         private var currentParentDir by mutableStateOf<VirDir?>(null)
+        private var fileCardMinWidth by WorkDir.globalServiceConfig.fileCardMinWidth
+        private var scrollOffset by WorkDir.globalServiceConfig.scrollOffset
+        private var loading by mutableStateOf(false)
 
         @Composable
         fun InnerPresenter(): DBBrowserScreenState {
@@ -244,8 +351,11 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
             LaunchedEffect(currentUDisk) {
                 currentUDisk?.apply {
                     currentParentDir = null
-                    val rootDir = loadRootDir(this)
-                    loadDirData(this, rootDir)
+                    val disk = this
+                    launch(Dispatchers.IO) {
+                        val rootDir = loadRootDir(disk)
+                        loadDirData(disk, rootDir)
+                    }
                 }
             }
             return DBBrowserScreenState(
@@ -254,6 +364,9 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
                 currentFiles,
                 currentDirs,
                 currentParentDir,
+                fileCardMinWidth,
+                scrollOffset,
+                loading,
                 action = { action ->
                     when (action) {
                         DBBrowserScreenAction.Back -> {
@@ -291,21 +404,39 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
                                 val name = virFile.name
                                 val udiskId = virFile.udiskId
                                 val fileId = virFile.fileId
-                                val storageDir = dbProject.storageDir
-                                if (storageDir != null) {
-                                    val sourceFile = File(storageDir).linkDir(udiskId).linkFile(fileId)
-                                    if (sourceFile.exists()) {
-                                        //saveDir
-                                        val saveDir = WorkDir.globalServiceConfig.tempDir
-                                        val targetFile = saveDir.linkFile(name)
-                                        sourceFile.autoTransferTo(targetFile)
-                                        toast.applyShow(ToastModel("文件导出完成(${targetFile.absolutePath})", type = ToastModel.Type.Success))
-                                    } else {
-                                        toast.applyShow("Storage dir not exists, please select again.")
+
+                                try {
+                                    val sourceInputStream = dbProject.getFileInputStream(udiskId, fileId)
+                                    val sourceSize = dbProject.getFileSize(udiskId, fileId)
+                                    //saveDir
+                                    val saveDir = WorkDir.globalServiceConfig.tempDir
+                                    val targetFile = saveDir.linkFile(name)
+                                    val speedCalculator = SpeedCalculator()
+                                    sourceInputStream.autoTransferTo(targetFile.outputStream()) { copied ->
+                                        val progress = (copied.toDouble() * 100 / sourceSize).toFloat()
+                                        val currentSpeed = speedCalculator.calculate(copied)
+                                        logger.debug { "progress[${fileSize(currentSpeed)}/s]: $progress" }
                                     }
-                                } else {
-                                    toast.applyShow("Please select storage dir, first.")
+                                    logger.debug { "file export complete: ${targetFile.absolutePath}[${speedCalculator.getUsedTime()} ms]" }
+                                    toast.applyShow(ToastModel("文件导出完成(${targetFile.absolutePath})", type = ToastModel.Type.Success))
+                                } catch (e: IOException) {
+                                    toast.applyShow(ToastModel("文件导出失败(${e.message})", type = ToastModel.Type.Warning))
+                                } catch (e: Throwable) {
+                                    toast.applyShow(ToastModel("文件导出失败(${e.message})", type = ToastModel.Type.Error))
                                 }
+                            }
+                        }
+
+                        is DBBrowserScreenAction.ChangeCustomName -> {
+                            val udiskId = currentUDisk?.udiskId
+                            if (dbProject is Project && udiskId != null) {
+                                val customName = action.customName
+                                if (customName.isEmpty()) {
+                                    dbProject.setCustomUDiskName(udiskId, null)
+                                } else {
+                                    dbProject.setCustomUDiskName(udiskId, customName)
+                                }
+                                dbProject.save()
                             }
                         }
                     }
@@ -313,26 +444,32 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
             )
         }
 
-        private suspend fun loadRootDir(udisk: VirUdisk) = dbDataProvider.getRootDir(udisk.udiskId)
+        private suspend fun loadRootDir(udisk: VirUdisk): VirDir {
+            loading = true
+            val dir = dbDataProvider.getRootDir(udisk.udiskId)
+            loading = false
+            return dir
+        }
 
         private val lock = ReentrantLock()
         private suspend fun loadDirData(udisk: VirUdisk, dir: VirDir) {
             lock.lock()
+            loading = true
             logger.info("Loading data for udisk ${udisk.name} and dir ${dir.path}[${dir.dirId}]")
             withContext(Dispatchers.IO) {
+                currentFiles.clear()
+                currentDirs.clear()
                 val files = dbDataProvider.getDirFiles(udisk.udiskId, dir.dirId)
                 val dirs = dbDataProvider.getDirDirs(udisk.udiskId, dir.dirId)
                 scope.launch {
-                    currentFiles.clear()
                     currentFiles.addAll(files)
-
-                    currentDirs.clear()
                     currentDirs.addAll(dirs)
 
                     currentParentDir = dir
                 }
             }
             logger.info("Data loaded for udisk ${udisk.name}[currentFiles=${currentFiles.size}, currentDirs=${currentDirs.size}]")
+            loading = false
             lock.unlock()
         }
     }
@@ -342,12 +479,25 @@ class DBBrowserScreen(private val dbProject: Project): UIComponent<DBBrowserScre
     override fun Presenter(): DBBrowserScreenState {
         val presenter = remember { InnerPresenter() }
         return presenter.InnerPresenter()
-//        return DBBrowserScreenState(
-//            listOf(),
-//            null,
-//            listOf(),
-//            listOf(),
-//            null
-//        ) {}
+    }
+
+    @Composable
+    fun getTitle(currentUDisk: VirUdisk?): String {
+        val rawName = currentUDisk?.name
+        val currentUDiskName = if (dbProject is Project) {
+            val customName = dbProject.getCustomUDiskNameState(currentUDisk?.udiskId?:"未知u盘")
+            if (customName != null) {
+                "$customName[$rawName]"
+            } else {
+                rawName
+            }
+        } else {
+            rawName
+        }
+        return if (currentUDiskName == null) {
+            "数据管理"
+        } else {
+            "数据管理: $currentUDiskName"
+        }
     }
 }

@@ -1,6 +1,6 @@
 package ui.screens
 
-import LocalTopTitleBarState
+import LocalMainTopTitleBarState
 import WorkDir
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,7 +43,7 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<Lo
             }
         }
         Column {
-            Main.GlobalTopAppBar(LocalTopTitleBarState.current!!)
+            Main.GlobalTopAppBar("载入U盘小偷数据库", LocalMainTopTitleBarState.current!!)
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(Modifier.align(Alignment.Center)) {
                     Text("打开数据项目", fontSize = 24.sp, modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally))
@@ -52,6 +52,12 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<Lo
                         importDBFileLauncher.launch()
                     }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
                         Text("选择数据库文件")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        TODO()
+                    }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
+                        Text("导入远程服务器")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("最近打开的项目", fontSize = 20.sp, modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally))

@@ -3,7 +3,6 @@ package utils
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import kotlin.math.min
 
 fun File.transferFilePartTo(targetFile: File, startOffset: Long = 0): Long {
     if (length() < startOffset) throw IllegalStateException("传输文件字节数超出源文件: $this[${length() < startOffset}]")
@@ -51,4 +50,42 @@ fun InputStream.autoTransferTo(out: OutputStream, startOffset: Long = 0L, speedL
         close()
         out.close()
     }
+}
+fun InputStream.autoTransferTo(out: OutputStream, startOffset: Long = 0L, speedLimit: Long = Long.MAX_VALUE, bufferSize: Int = 1024 * 1024, progress: (Long) -> Unit) {
+    try {
+        if (startOffset > 0L) {
+            skip(startOffset)
+        }
+        val input = RateLimitInputStream(this, speedLimit)
+        val buffer = ByteArray(bufferSize)
+        var transferred: Long = 0
+        var read: Int
+        while ((read(buffer, 0, bufferSize).also { read = it }) >= 0) {
+            out.write(buffer, 0, read)
+            transferred += read.toLong()
+            progress(transferred)
+        }
+    } finally {
+        close()
+        out.close()
+    }
+}
+
+class SpeedCalculator() {
+    private val initialTime = System.currentTimeMillis()
+    private var lastTime: Long = 0
+    private var lastBytes: Long = 0
+    private var speed: Long = 0
+    fun calculate(bytes: Long): Long {
+        val currentTime = System.currentTimeMillis()
+        val timeDiff = currentTime - lastTime
+        if (timeDiff == 0L) return 0
+        val bytesDiff = bytes - lastBytes
+        val speed = bytesDiff * 1000 / timeDiff
+        this.speed = speed
+        this.lastTime = currentTime
+        this.lastBytes = bytes
+        return speed
+    }
+    fun getUsedTime(): Long = System.currentTimeMillis() - initialTime
 }
