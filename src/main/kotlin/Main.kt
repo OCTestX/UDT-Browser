@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
@@ -28,6 +30,8 @@ import browser.Project
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Menu
 import compose.icons.tablericons.Palette
+import io.github.vinceglb.filekit.compose.PickerResultLauncher
+import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.launch
 import ui.component.ToastUI
 import ui.component.ToastUIState
@@ -37,6 +41,7 @@ import ui.screens.LoadDBScreen
 import utils.Colors
 import utils.ListItemIterable
 import utils.TmpStorage
+import java.io.File
 
 lateinit var toast: ToastUIState
 val LocalMainTopTitleBarState = compositionLocalOf<Main.MainTopTitleBarState?> { null }
@@ -244,9 +249,23 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                 var dirSizeEachCountAnimateDelay by remember { WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay }
                 Slider(dirSizeEachCountAnimateDelay.toFloat(), onValueChange = { dirSizeEachCountAnimateDelay = it.toLong() }, valueRange = 0f..1000f, steps = 100, colors = SliderDefaults.colors())
 
-                Text("触控屏优化")
+                Text("触控屏优化[开启后无法灵活切换'调节目录大小遍历统计动画延迟',建议切换完成再开]")
                 var touchOptimized by remember { WorkDir.globalServiceConfig.touchOptimized }
                 Switch(touchOptimized, onCheckedChange = { touchOptimized = it })
+
+                Text("桌面文件夹位置")
+                Row {
+                    var desktopDirLocation by remember { WorkDir.globalServiceConfig.desktopDirLocation }
+                    val selectedStorageDirLauncher = rememberSelectDesktopDirLocationLauncher {}
+                    OutlinedTextField(desktopDirLocation, onValueChange = {
+                        desktopDirLocation = it
+                    })
+                    IconButton(modifier = Modifier.align(Alignment.CenterVertically), onClick = {
+                        selectedStorageDirLauncher.launch()
+                    }) {
+                        Icon(Icons.Default.LocationOn, contentDescription = null)
+                    }
+                }
 
                 Button(onClick = {
                     WorkDir.globalServiceConfig.windowSize.value = Pair(MainWindowState.size.width.value.toInt(), MainWindowState.size.height.value.toInt())
@@ -262,6 +281,22 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                 }) {
                     Icon(TablerIcons.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
+            }
+        }
+    }
+
+    @Composable
+    fun rememberSelectDesktopDirLocationLauncher(closeSelectStorageDirVisible: () -> Unit): PickerResultLauncher {
+        return rememberDirectoryPickerLauncher(
+            title = "选择桌面文件夹",
+        ) { selectedFile ->
+            // Handle the picked files
+            if (selectedFile != null) {
+                val file = selectedFile.file
+                if (file.exists()) {
+                    WorkDir.globalServiceConfig.desktopDirLocation.value = file.absolutePath
+                }
+                closeSelectStorageDirVisible()
             }
         }
     }

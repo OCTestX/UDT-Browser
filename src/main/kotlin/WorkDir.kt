@@ -31,6 +31,7 @@ object WorkDir {
         val scrollOffset: Int,
         val dirSizeEachCountAnimateDelay: Long,
         val touchOptimized: Boolean,
+        val desktopDirLocation: String,
         val windowSize: Pair<Int, Int>,
     )
 
@@ -43,6 +44,7 @@ object WorkDir {
         val scrollOffset: MutableState<Int>,
         val dirSizeEachCountAnimateDelay: MutableState<Long>,
         val touchOptimized: MutableState<Boolean>,
+        val desktopDirLocation: MutableState<String>,
         val windowSize: MutableState<Pair<Int, Int>>,
     ) {
         val tempDir = File(currentDir, "Temp").mustDir()
@@ -61,6 +63,7 @@ object WorkDir {
             scrollOffset = scrollOffset.value,
             dirSizeEachCountAnimateDelay = dirSizeEachCountAnimateDelay.value,
             touchOptimized = touchOptimized.value,
+            desktopDirLocation = desktopDirLocation.value,
             windowSize = windowSize.value,
         )
 
@@ -102,6 +105,7 @@ object WorkDir {
                     mutableStateOf(content.scrollOffset),
                     mutableStateOf(content.dirSizeEachCountAnimateDelay),
                     mutableStateOf(content.touchOptimized),
+                    mutableStateOf(content.desktopDirLocation),
                     mutableStateOf(content.windowSize)
                 )
             }
@@ -118,6 +122,7 @@ object WorkDir {
             150,
             80,
             true,
+            "",
             Pair(1200, 800)
         )
         val configFile = File(rootDir, "serviceConfig.json")

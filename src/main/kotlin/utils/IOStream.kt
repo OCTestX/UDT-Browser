@@ -51,7 +51,7 @@ fun InputStream.autoTransferTo(out: OutputStream, startOffset: Long = 0L, speedL
         out.close()
     }
 }
-fun InputStream.autoTransferTo(out: OutputStream, startOffset: Long = 0L, speedLimit: Long = Long.MAX_VALUE, bufferSize: Int = 1024 * 1024, progress: (Long) -> Unit) {
+fun InputStream.autoTransferTo(out: OutputStream, startOffset: Long = 0L, speedLimit: Long = Long.MAX_VALUE, bufferSize: Int = 1024 * 1024, progress: (copied: Long, current: Int) -> Unit) {
     try {
         if (startOffset > 0L) {
             skip(startOffset)
@@ -60,10 +60,11 @@ fun InputStream.autoTransferTo(out: OutputStream, startOffset: Long = 0L, speedL
         val buffer = ByteArray(bufferSize)
         var transferred: Long = 0
         var read: Int
-        while ((read(buffer, 0, bufferSize).also { read = it }) >= 0) {
+        while ((input.read(buffer, 0, bufferSize).also { read = it }) >= 0) {
             out.write(buffer, 0, read)
-            transferred += read.toLong()
-            progress(transferred)
+            val current = read
+            transferred += current
+            progress(transferred, current)
         }
     } finally {
         close()
