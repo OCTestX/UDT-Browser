@@ -241,15 +241,11 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                 var fileItemMinWidth by remember { WorkDir.globalServiceConfig.fileCardMinWidth }
                 Slider(fileItemMinWidth.toFloat(), onValueChange = { fileItemMinWidth = it.toInt() }, valueRange = 50f..1000f, steps = 25, colors = SliderDefaults.colors())
 
-                Text("调节滚动按钮单次滚动的距离: ${WorkDir.globalServiceConfig.scrollOffset.value}")
-                var scrollOffset by remember { WorkDir.globalServiceConfig.scrollOffset }
-                Slider(scrollOffset.toFloat(), onValueChange = { scrollOffset = it.toInt() }, valueRange = 150f..1000f, steps = 50, colors = SliderDefaults.colors())
-
                 Text("调节目录大小遍历统计动画延迟: ${WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay.value}ms")
                 var dirSizeEachCountAnimateDelay by remember { WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay }
                 Slider(dirSizeEachCountAnimateDelay.toFloat(), onValueChange = { dirSizeEachCountAnimateDelay = it.toLong() }, valueRange = 0f..1000f, steps = 100, colors = SliderDefaults.colors())
 
-                Text("触控屏优化[开启后无法灵活切换'调节目录大小遍历统计动画延迟',建议切换完成再开]")
+                Text("触控屏优化[开启后会将多列列表换成单列列表]")
                 var touchOptimized by remember { WorkDir.globalServiceConfig.touchOptimized }
                 Switch(touchOptimized, onCheckedChange = { touchOptimized = it })
 
@@ -266,6 +262,10 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                         Icon(Icons.Default.LocationOn, contentDescription = null)
                     }
                 }
+
+                Text("启用缩略图: ${WorkDir.globalServiceConfig.enableThumbnail.value}")
+                var enableThumbnail by remember { WorkDir.globalServiceConfig.enableThumbnail }
+                Switch(enableThumbnail, onCheckedChange = { enableThumbnail = it })
 
                 Button(onClick = {
                     WorkDir.globalServiceConfig.windowSize.value = Pair(MainWindowState.size.width.value.toInt(), MainWindowState.size.height.value.toInt())

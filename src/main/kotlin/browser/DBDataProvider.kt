@@ -67,9 +67,11 @@ class DBDataProvider(private val dbFile: DBFile) {
             }
         } else {
             logger.debug { "Searched files with keyword $keyword of all UDisk" }
-            // TODO: implement search files of all UDisk
-            logger.error { "Search files of all UDisk is not implemented yet" }
-            return emptyList()
+            val searchedFiles = mutableListOf<VirFile>()
+            for (disk in getAllUDisk()) {
+                searchedFiles.addAll(searchFiles(disk.udiskId, keyword))
+            }
+            return searchedFiles
         }
     }
 

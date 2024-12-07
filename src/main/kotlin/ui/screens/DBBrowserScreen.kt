@@ -9,13 +9,11 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -32,12 +30,14 @@ import compose.icons.tablericons.*
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import logger
 import toast
 import ui.component.ToastModel
+import ui.component.UDirCard
+import ui.component.UDiskCard
+import ui.component.UFileCard
 import ui.core.UIComponent
 import ui.utils.Animates
 import utils.*
@@ -55,7 +55,6 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         val currentDirs: List<VirDir>,
         val currentParentDir: VirDir?,
         val fileCardMinWidth: Int,
-        val scrollOffset: Int,
         val touchOptimized: Boolean,
         val searchingKeyword: String,
         val searchingMode: Boolean,
@@ -63,6 +62,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         val needCopyFileTotalSize: Long,
         val copiedFileTotalSize: Long,
         val allCopingProgress: Float,
+        val enableThumbnail: Boolean,
         action: (DBBrowserScreenAction) -> Unit
     ) : UIState<DBBrowserScreenAction>(action)
     sealed class DBBrowserScreenAction: UIAction() {
@@ -74,7 +74,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         data class ChangeCustomName(val customName: String): DBBrowserScreenAction()
         data class ChangeSearchingKeyword(val keyword: String): DBBrowserScreenAction()
         data class SwitchSearchingMode(val searchingMode: Boolean): DBBrowserScreenAction()
-        data class Search(val keyword: String): DBBrowserScreenAction()
+        data class Search(val keyword: String, val involveAllDisk: Boolean): DBBrowserScreenAction()
         data class ExportFile(val virFile: VirFile, val targetDir: File): DBBrowserScreenAction()
         data class ExportFileToDesktop(val virFile: VirFile): DBBrowserScreenAction()
     }
@@ -99,12 +99,10 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
             Animates.VisibilityAnimates {
                 TitleBar(state)
             }
-            val listDirsAndFilesScrollState = rememberLazyGridState()
-            val disksScrollState = rememberLazyListState()
             Box(modifier = Modifier.weight(1.0f)) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    AllUdisks(state, disksScrollState)
-                    CurrentFilesAndDir(state, listDirsAndFilesScrollState, setSelectedVirFile = {
+                    AllUdisks(state)
+                    CurrentFilesAndDir(state, setSelectedVirFile = {
                         selectedVirFile = it
                     })
                 }
@@ -114,57 +112,26 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                     }
                 }
             }
-            TouchOptimized(state, disksScrollState, listDirsAndFilesScrollState)
+            BottomInfo(state)
         }
     }
 
     @Composable
-    fun TouchOptimized(state: DBBrowserScreenState, disksScrollState: LazyListState, listDirsAndFilesScrollState: LazyGridState) {
-        AnimatedVisibility(state.touchOptimized) {
-            Row(modifier = Modifier.padding(6.dp)) {
-                IconButton(onClick = {
-                    scope.launch {
-                        disksScrollState.animateScrollToItem(disksScrollState.firstVisibleItemIndex, disksScrollState.firstVisibleItemScrollOffset - state.scrollOffset)
-                    }
-                }) {
-                    Icon(TablerIcons.ArrowUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    fun BottomInfo(state: DBBrowserScreenState) {
+        Row(modifier = Modifier.padding(6.dp)) {
+            val coping by remember(state.needCopyFileTotalSize) {
+                derivedStateOf {
+                    state.needCopyFileTotalSize > 0
                 }
-                IconButton(onClick = {
-                    scope.launch {
-                        disksScrollState.animateScrollToItem(disksScrollState.firstVisibleItemIndex, disksScrollState.firstVisibleItemScrollOffset + state.scrollOffset)
+            }
+            AnimatedContent(coping, modifier = Modifier.align(Alignment.CenterVertically)) {
+                if (it) {
+                    Row {
+                        LinearProgressIndicator(progress = state.allCopingProgress, modifier = Modifier.weight(1.0f).align(Alignment.CenterVertically))
+                        Text(fileSize(state.needCopyFileTotalSize - state.copiedFileTotalSize), modifier = Modifier.align(Alignment.CenterVertically))
                     }
-                }) {
-                    Icon(TablerIcons.ArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = {
-                    scope.launch {
-                        listDirsAndFilesScrollState.animateScrollToItem(listDirsAndFilesScrollState.firstVisibleItemIndex, listDirsAndFilesScrollState.firstVisibleItemScrollOffset - state.scrollOffset)
-                    }
-                }) {
-                    Icon(TablerIcons.ArrowUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = {
-                    scope.launch {
-                        listDirsAndFilesScrollState.animateScrollToItem(listDirsAndFilesScrollState.firstVisibleItemIndex, listDirsAndFilesScrollState.firstVisibleItemScrollOffset + state.scrollOffset)
-                    }
-                }) {
-                    Icon(TablerIcons.ArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                }
-
-                val coping by remember(state.needCopyFileTotalSize) {
-                    derivedStateOf {
-                        state.needCopyFileTotalSize > 0
-                    }
-                }
-                AnimatedContent(coping, modifier = Modifier.align(Alignment.CenterVertically)) {
-                    if (it) {
-                        Row {
-                            LinearProgressIndicator(progress = state.allCopingProgress, modifier = Modifier.weight(1.0f).align(Alignment.CenterVertically))
-                            Text(fileSize(state.needCopyFileTotalSize - state.copiedFileTotalSize), modifier = Modifier.align(Alignment.CenterVertically))
-                        }
-                    } else {
-                        Text("无复制任务", modifier = Modifier.align(Alignment.CenterVertically))
-                    }
+                } else {
+                    Text("无复制任务", modifier = Modifier.align(Alignment.CenterVertically))
                 }
             }
         }
@@ -243,28 +210,47 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
-    fun RowScope.CurrentFilesAndDir(state: DBBrowserScreenState, listDirsAndFilesScrollState: LazyGridState, setSelectedVirFile: (VirFile) -> Unit) {
+    fun RowScope.CurrentFilesAndDir(state: DBBrowserScreenState, setSelectedVirFile: (VirFile) -> Unit) {
         Animates.VisibilityAnimates {
-            Row (modifier = Modifier.weight(1f).animateContentSize()) {
-                LazyVerticalGrid(columns = GridCells.Adaptive(state.fileCardMinWidth.dp), modifier = Modifier.weight(1f), state = listDirsAndFilesScrollState) {
-                    items(state.currentDirs, key = { it.dirId }) { dir ->
-                        UDirCard(dir, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
-                            state.action(DBBrowserScreenAction.SwitchDir(dir))
-                        })
+            AnimatedContent(state.touchOptimized) { touchOptimized ->
+                if (touchOptimized) {
+                    val listDirsAndFilesScrollState = rememberLazyListState()
+                    Row (modifier = Modifier.weight(1f).animateContentSize()) {
+                        LazyColumn(modifier = Modifier.weight(1f), state = listDirsAndFilesScrollState) {
+                            items(state.currentDirs, key = { it.dirId }) { dir ->
+                                UDirCard(dir, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
+                                    state.action(DBBrowserScreenAction.SwitchDir(dir))
+                                }, dbDataProvider)
+                            }
+                            items(state.currentFiles, key = { it.fileId }) { file ->
+                                UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
+                                    setSelectedVirFile(file)
+                                }, dbProject)
+                            }
+                        }
+                        AnimatedVisibility(state.touchOptimized) {
+                            // 滚动条
+                            VerticalScrollbar(
+                                modifier = Modifier.fillMaxHeight(),
+                                adapter = rememberScrollbarAdapter(listDirsAndFilesScrollState),
+                                style = LocalScrollbarStyle.current.copy(unhoverColor = MaterialTheme.colorScheme.primary, hoverColor = MaterialTheme.colorScheme.inversePrimary)
+                            )
+                        }
                     }
-                    items(state.currentFiles, key = { it.fileId }) { file ->
-                        UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
-                            setSelectedVirFile(file)
-                        })
+                } else {
+                    val listDirsAndFilesScrollState = rememberLazyGridState()
+                    LazyVerticalGrid(columns = GridCells.Adaptive(state.fileCardMinWidth.dp), modifier = Modifier.weight(1f), state = listDirsAndFilesScrollState) {
+                        items(state.currentDirs, key = { it.dirId }) { dir ->
+                            UDirCard(dir, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
+                                state.action(DBBrowserScreenAction.SwitchDir(dir))
+                            }, dbDataProvider)
+                        }
+                        items(state.currentFiles, key = { it.fileId }) { file ->
+                            UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
+                                setSelectedVirFile(file)
+                            },dbProject)
+                        }
                     }
-                }
-                AnimatedVisibility(state.touchOptimized) {
-                    // 滚动条
-                    VerticalScrollbar(
-                        modifier = Modifier.fillMaxHeight(),
-                        adapter = rememberScrollbarAdapter(listDirsAndFilesScrollState),
-                        style = LocalScrollbarStyle.current.copy(unhoverColor = MaterialTheme.colorScheme.primary, hoverColor = MaterialTheme.colorScheme.inversePrimary)
-                    )
                 }
             }
         }
@@ -272,7 +258,8 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
-    fun AllUdisks(state: DBBrowserScreenState, disksScrollState: LazyListState) {
+    fun AllUdisks(state: DBBrowserScreenState) {
+        val disksScrollState = rememberLazyListState()
         AnimatedVisibility(state.currentParentDir?.isRoot == true || state.currentParentDir == null) {
             Animates.VisibilityAnimates {
                 Column {
@@ -281,7 +268,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                             items(state.allUdisks, key = { it.udiskId }) { udisk ->
                                 UDiskCard(udisk, modifier = Modifier.animateItemPlacement().padding(6.dp).clickable {
                                     state.action(DBBrowserScreenAction.SelectUdisk(udisk))
-                                })
+                                }, dbProject)
                             }
                         }
                         AnimatedVisibility(state.touchOptimized) {
@@ -417,12 +404,19 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 Icon(rememberVectorPainter(TablerIcons.Search), contentDescription = null)
             }
 
+            var involveAllDisk by remember { mutableStateOf(true) }
             AnimatedContent(state.searchingMode) {
                 Row(Modifier.weight(1f).align(Alignment.CenterVertically)) {
                     if (it) {
+                        IconToggleButton(involveAllDisk, onCheckedChange = {
+                            involveAllDisk = it
+                            state.action(DBBrowserScreenAction.Search(state.searchingKeyword, involveAllDisk))
+                        }) {
+                            Icon(rememberVectorPainter(TablerIcons.BorderAll), contentDescription = null)
+                        }
                         OutlinedTextField(state.searchingKeyword, {
                             state.action(DBBrowserScreenAction.ChangeSearchingKeyword(it))
-                            state.action(DBBrowserScreenAction.Search(it))
+                            state.action(DBBrowserScreenAction.Search(it, involveAllDisk))
                         }, modifier = Modifier.weight(1f).padding(horizontal = 6.dp).align(Alignment.CenterVertically))
                     } else {
                         val enable = state.currentParentDir?.isRoot != true
@@ -446,86 +440,6 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun UDiskCard(disk: VirUdisk, modifier: Modifier = Modifier) {
-        Card(
-            modifier = Modifier.then(modifier)
-        ) {
-            Column(Modifier.padding(6.dp)) {
-                Row(Modifier.fillMaxWidth()) {
-                    Icon(TablerIcons.BoxModel, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(Modifier.weight(1f)) {
-                        if (dbProject is Project) {
-                            AnimatedContent(dbProject.getCustomUDiskNameState(disk.udiskId)?: disk.name) {
-                                Text(it, fontSize = MaterialTheme.typography.titleLarge.fontSize)
-                            }
-                        } else {
-                            Text(disk.name, fontSize = MaterialTheme.typography.titleLarge.fontSize)
-                        }
-                        Text("${fileSize(disk.totalSize - disk.freeSize)} / ${fileSize(disk.totalSize)}", fontSize = MaterialTheme.typography.bodySmall.fontSize)
-                    }
-                }
-            }
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun UDirCard(dir: VirDir, modifier: Modifier = Modifier) {
-        Card(
-            modifier = Modifier.then(modifier)
-        ) {
-            Column(Modifier.padding(6.dp)) {
-                Row(Modifier.fillMaxWidth().weight(1f)) {
-                    Icon(TablerIcons.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(Modifier.weight(1f)) {
-                        Text(dir.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
-                    }
-                }
-
-                var countingSize by rememberSaveable { mutableStateOf(true) }
-                val size by produceState(0L) {
-                    withContext(Dispatchers.IO) {
-                        dbDataProvider.deepCountDirSize(dir.udiskId, dir.dirId) {
-                            value = it
-                            delay(WorkDir.globalServiceConfig.dirSizeEachCountAnimateDelay.value)
-                        }
-                        countingSize = false
-                    }
-                }
-                Animates.VisibilityAnimates {
-                    Column {
-                        Text(fileSize(size))
-                        AnimatedVisibility(countingSize) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth())
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun UFileCard(file: VirFile, modifier: Modifier = Modifier) {
-        Card(
-            modifier = Modifier.then(modifier)
-        ) {
-            Column(Modifier.padding(6.dp)) {
-                Row(Modifier.fillMaxWidth().weight(1f)) {
-                    Icon(TablerIcons.File, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(Modifier.weight(1f)) {
-                        Text(file.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
-                    }
-                }
-                Animates.VisibilityAnimates {
-                    Text(fileSize(file.size))
-                }
-            }
-        }
-    }
-
     inner class InnerPresenter {
         private val allUdisks = mutableStateListOf<VirUdisk>()
         private var currentUDisk by mutableStateOf<VirUdisk?>(null)
@@ -533,7 +447,6 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         private val currentDirs = mutableStateListOf<VirDir>()
         private var currentParentDir by mutableStateOf<VirDir?>(null)
         private var fileCardMinWidth by WorkDir.globalServiceConfig.fileCardMinWidth
-        private var scrollOffset by WorkDir.globalServiceConfig.scrollOffset
         private var touchOptimized by WorkDir.globalServiceConfig.touchOptimized
         private var currentSearchingMode by mutableStateOf(false)
         private var currentSearchingKeyword by mutableStateOf("")
@@ -541,6 +454,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         private var needCopyFileTotalSize by mutableStateOf(0L)
         private var copiedFileTotalSize by mutableStateOf(0L)
         private var allCopingProgress by mutableFloatStateOf(1f)
+        private var enableThumbnail by WorkDir.globalServiceConfig.enableThumbnail
 
         fun actionLink(action: DBBrowserScreenAction) {
             when (action) {
@@ -613,7 +527,10 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
 
                 is DBBrowserScreenAction.Search -> {
                     ioScope.launch {
-                        loadSearchFiles(currentUDisk?.udiskId, action.keyword)
+                        loadSearchFiles(
+                            if (action.involveAllDisk) null else currentUDisk?.udiskId,
+                            action.keyword
+                        )
                     }
                 }
 
@@ -706,7 +623,6 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 currentDirs,
                 currentParentDir,
                 fileCardMinWidth,
-                scrollOffset,
                 touchOptimized,
                 currentSearchingKeyword,
                 currentSearchingMode,
@@ -714,6 +630,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 needCopyFileTotalSize,
                 copiedFileTotalSize,
                 allCopingProgress,
+                enableThumbnail,
                 action = { action ->
                     actionLink(action)
                 }

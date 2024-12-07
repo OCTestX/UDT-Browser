@@ -28,11 +28,11 @@ object WorkDir {
         val remoteProjects: List<RemoteProject> = emptyList(),
         val currentThemeSchemeIndex: Int,
         val fileCardMinWidth: Int,
-        val scrollOffset: Int,
         val dirSizeEachCountAnimateDelay: Long,
         val touchOptimized: Boolean,
         val desktopDirLocation: String,
         val windowSize: Pair<Int, Int>,
+        val enableThumbnail: Boolean,
     )
 
     data class ServiceConfig(
@@ -41,11 +41,11 @@ object WorkDir {
         val remoteProjects: MutableList<RemoteProject>,
         var currentThemeSchemeIndex: Int,
         val fileCardMinWidth: MutableState<Int>,
-        val scrollOffset: MutableState<Int>,
         val dirSizeEachCountAnimateDelay: MutableState<Long>,
         val touchOptimized: MutableState<Boolean>,
         val desktopDirLocation: MutableState<String>,
         val windowSize: MutableState<Pair<Int, Int>>,
+        val enableThumbnail: MutableState<Boolean>
     ) {
         val tempDir = File(currentDir, "Temp").mustDir()
         val cacheDir = File(currentDir, "Cache").mustDir()
@@ -60,11 +60,11 @@ object WorkDir {
             recentProjects = recentProjects,
             currentThemeSchemeIndex = currentThemeSchemeIndex,
             fileCardMinWidth = fileCardMinWidth.value,
-            scrollOffset = scrollOffset.value,
             dirSizeEachCountAnimateDelay = dirSizeEachCountAnimateDelay.value,
             touchOptimized = touchOptimized.value,
             desktopDirLocation = desktopDirLocation.value,
             windowSize = windowSize.value,
+            enableThumbnail = enableThumbnail.value
         )
 
         //
@@ -102,11 +102,11 @@ object WorkDir {
                     content.remoteProjects.toMutableList(),
                     content.currentThemeSchemeIndex,
                     mutableStateOf(content.fileCardMinWidth),
-                    mutableStateOf(content.scrollOffset),
                     mutableStateOf(content.dirSizeEachCountAnimateDelay),
                     mutableStateOf(content.touchOptimized),
                     mutableStateOf(content.desktopDirLocation),
-                    mutableStateOf(content.windowSize)
+                    mutableStateOf(content.windowSize),
+                    mutableStateOf(content.enableThumbnail)
                 )
             }
         }
@@ -119,11 +119,11 @@ object WorkDir {
             listOf(),
             0,
             200,
-            150,
-            80,
+            9,
             true,
             "",
-            Pair(1200, 800)
+            Pair(1200, 800),
+            false
         )
         val configFile = File(rootDir, "serviceConfig.json")
         configFile.writeText(Json.encodeToString(configContent), Charset.forName("UTF-8"))
