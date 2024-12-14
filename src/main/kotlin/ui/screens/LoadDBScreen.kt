@@ -13,14 +13,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import browser.DBFile
 import browser.Project
+import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
 import kotlinx.coroutines.launch
+import toast
 import ui.core.UIComponent
 import java.io.File
 
-class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<LoadDBScreen.ScannerAction, LoadDBScreen.LoadDBScreenState>() {
+class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManagerUDiskScreen: (File) -> Unit): UIComponent<LoadDBScreen.ScannerAction, LoadDBScreen.LoadDBScreenState>() {
     class LoadDBScreenState(
         val recentProjects: List<Project>,
         action: (ScannerAction) -> Unit
@@ -28,6 +30,7 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<Lo
     sealed class ScannerAction: UIAction() {
         class OpenDBFile(val dbFileSource: File) : ScannerAction()
         class OpenRecentProject(val project: Project) : ScannerAction()
+        class OpenManagerUDisk(val udiskRootDir: File) : ScannerAction()
     }
 
     @Composable
@@ -40,6 +43,18 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<Lo
             // Handle the picked files
             if (file != null) {
                 state.action(ScannerAction.OpenDBFile(file.file))
+            }
+        }
+        val openManagerUDiskLauncher = rememberDirectoryPickerLauncher(
+            title = "选择管理U盘",
+        ) { selectedFile ->
+            // Handle the picked files
+            println("selectedFile: $selectedFile")
+            if (selectedFile != null) {
+                val file = selectedFile.file
+                if (file.exists()) {
+                    state.action(ScannerAction.OpenManagerUDisk(file))
+                }
             }
         }
         Column {
@@ -58,6 +73,12 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<Lo
                         TODO()
                     }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
                         Text("导入远程服务器")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        openManagerUDiskLauncher.launch()
+                    }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
+                        Text("打开管理U盘")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("最近打开的项目", fontSize = 20.sp, modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally))
@@ -103,6 +124,13 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit): UIComponent<Lo
                         scope.launch {
                             val project = action.project
                             launchDBBrowserScreen(project)
+                        }
+                    }
+
+                    is ScannerAction.OpenManagerUDisk -> {
+                        scope.launch {
+                            val udiskRootDir = action.udiskRootDir
+                            launchManagerUDiskScreen(udiskRootDir)
                         }
                     }
                 }

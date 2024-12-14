@@ -1,5 +1,6 @@
 package ui.component
 
+import WorkDir
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
@@ -18,12 +19,13 @@ import browser.AbsProject
 import browser.models.VirFile
 import compose.icons.TablerIcons
 import compose.icons.tablericons.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import logger
 import toast
 import ui.utils.Animates
 import utils.fileSize
 import java.io.IOException
-import kotlin.jvm.Throws
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,15 +49,21 @@ fun UFileCard(file: VirFile, modifier: Modifier = Modifier, dbProject: AbsProjec
 
 @Composable
 private fun Icon(file: VirFile, dbProject: AbsProject) {
-    var painter: Painter? by rememberSaveable(file, dbProject) {
+    var extraPainter: Painter? by rememberSaveable(file, dbProject) {
         mutableStateOf(null)
     }
-    LaunchedEffect(file, dbProject) {
+    LaunchedEffect(file, dbProject, WorkDir.globalServiceConfig.enableThumbnail.value) {
         try {
-            if (file.name.endsWith(".png") || file.name.endsWith(".jpg") || file.name.endsWith(".jpeg")) {
-                val input = dbProject.getFileInputStream(file.udiskId, file.fileId)
-                val bitmap = loadImageBitmap(input)
-                painter = BitmapPainter(bitmap)
+            if (WorkDir.globalServiceConfig.enableThumbnail.value && dbProject.isFileLocaled(file.udiskId, file.fileId)) {
+                if (file.name.endsWith(".png") || file.name.endsWith(".jpg") || file.name.endsWith(".jpeg")) {
+                    val bitmap = withContext(Dispatchers.IO) {
+                        val input = dbProject.getFileInputStream(file.udiskId, file.fileId)
+                        loadImageBitmap(input)
+                    }
+                    extraPainter = BitmapPainter(bitmap)
+                }
+            } else {
+                extraPainter = null
             }
         } catch (e: IOException) {
             logger.warn { "加载缩略图失败[WARM]: $file" }
@@ -64,7 +72,7 @@ private fun Icon(file: VirFile, dbProject: AbsProject) {
             logger.error { "加载缩略图失败: $file" }
         }
     }
-    AnimatedContent(painter) {
+    AnimatedContent(extraPainter) {
         if (it == null) {
             Icon(TablerIcons.File, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         } else {

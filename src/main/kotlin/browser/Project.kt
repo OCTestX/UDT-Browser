@@ -76,8 +76,20 @@ class Project(
             throw FileNotFoundException("请先选择文件库")
         }
     }
+
+    private fun getSourceFileOrNull(udiskId: String, fileId: String): File? {
+        val storageDir = storageDir ?: return null
+        val sourceFile = File(storageDir).linkDir(udiskId).linkFile(fileId)
+        if (sourceFile.exists().not()) return null
+        return sourceFile
+    }
+
     override suspend fun getFileInputStream(udiskId: String, fileId: String): InputStream {
         return getSourceFile(udiskId, fileId).inputStream()
+    }
+
+    override suspend fun isFileLocaled(udiskId: String, fileId: String): Boolean {
+        return getSourceFileOrNull(udiskId, fileId) != null
     }
 
     override suspend fun getFileSize(udiskId: String, fileId: String): Long {
@@ -128,6 +140,10 @@ class RemoteProject(
         TODO("Not yet implemented")
     }
 
+    override suspend fun isFileLocaled(udiskId: String, fileId: String): Boolean {
+        TODO("Not yet implemented")
+    }
+
     override suspend fun getFileSize(udiskId: String, fileId: String): Long {
         TODO("Not yet implemented")
     }
@@ -153,6 +169,7 @@ abstract class AbsProject {
     abstract val name: String
     abstract val dbFile: DBFile
     abstract suspend fun getFileInputStream(udiskId: String, fileId: String): InputStream
+    abstract suspend fun isFileLocaled(udiskId: String, fileId: String): Boolean
     abstract suspend fun getFileSize(udiskId: String, fileId: String): Long
     abstract fun exists(): Boolean
     abstract fun save()

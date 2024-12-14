@@ -162,15 +162,25 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                                         Text(selectedVirFile.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
                                     }
                                 }
+                                Spacer(Modifier.height(12.dp))
                                 Animates.VisibilityAnimates {
-                                    Text(fileSize(selectedVirFile.size))
+                                    Text(fileSize(selectedVirFile.size), style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                val disk = remember(selectedVirFile) { dbDataProvider.getUDisk(selectedVirFile.udiskId) }
+                                val customName = (dbProject as Project).getCustomUDiskNameState(disk.udiskId)?: disk.name
+                                Animates.VisibilityAnimates {
+                                    val filePath = remember(selectedVirFile) {
+                                        "[$customName](${fileSize(disk.totalSize - disk.freeSize)} / ${fileSize(disk.totalSize)}) \n ${dbDataProvider.getFilePath(selectedVirFile)}"
+                                    }
+                                    Text(filePath, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
                     }
                     val selectExportTargetDirLauncher = rememberSelectExportTargetDirLauncher {
                         if (it != null) {
-                            state.action(DBBrowserScreenAction.ExportFile(selectedVirFile, it))
+                            state.action(DBBrowserScreenAction.ExportFile(selectedVirFile, it.mustDir()))
                         }
                     }
                     Row(Modifier.fillMaxWidth().padding(16.dp).weight(1.0f)) {

@@ -121,6 +121,16 @@ class DBDataProvider(private val dbFile: DBFile) {
         }.first()
     }
 
+
+    //根目录文件:"//zulu"
+    //二级及以上目录文件:"/f/5.txt"
+    fun getFilePath(file: VirFile): String {
+        logger.debug { "Getting file path of file $file" }
+        val dir = getDir(file.udiskId, file.parentDirId)
+        val name = file.name
+        return "${dir.path}/$name"
+    }
+
     private val dirSizeCache = mutableMapOf<String, Long>()
     suspend fun deepCountDirSize(udiskId: String, dirId: String, useCache: Boolean = true, publishingSize: suspend (Long) -> Unit,) {
         if (useCache) {

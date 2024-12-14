@@ -37,6 +37,7 @@ import ui.component.ToastUI
 import ui.component.ToastUIState
 import ui.core.UIComponent
 import ui.screens.DBBrowserScreen
+import ui.screens.DBManagerUDiskScreen
 import ui.screens.LoadDBScreen
 import utils.Colors
 import utils.ListItemIterable
@@ -77,6 +78,7 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
     enum class HyperShareScreen() {
         LoadDBScreen,
         DBBrowserScreen,
+        DBManagerUDiskScreen,
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -163,6 +165,10 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
                     logger.info("Launching DBBrowserScreen with file: $it")
                     val key = TmpStorage.store(it)
                     state.action(AppAction.Nav(HyperShareScreen.DBBrowserScreen.name + "/$key"))
+                }, launchManagerUDiskScreen = {
+                    logger.info("Launching ManagerUDiskScreen")
+                    val key = TmpStorage.store(it)
+                    state.action(AppAction.Nav(HyperShareScreen.DBManagerUDiskScreen.name + "/$key"))
                 })
             }
             scanner.Main()
@@ -174,6 +180,15 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
             val args = requireNotNull(it.arguments)
             val project = TmpStorage.retrieve(args.getString("tkey_project")!!, Project::class.java)!!
             val dbBrowser = remember { DBBrowserScreen(project) }
+            dbBrowser.Main()
+        }
+        composable(
+            route = HyperShareScreen.DBManagerUDiskScreen.name+"/{tkey_manager_udisk_root_dir}",
+            arguments = listOf(navArgument("tkey_manager_udisk_root_dir") { type = NavType.StringType })
+        ) {
+            val args = requireNotNull(it.arguments)
+            val managerUDiskRootDir = TmpStorage.retrieve(args.getString("tkey_manager_udisk_root_dir")!!, File::class.java)!!
+            val dbBrowser = remember { DBManagerUDiskScreen(managerUDiskRootDir) }
             dbBrowser.Main()
         }
     }
