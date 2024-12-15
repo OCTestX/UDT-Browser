@@ -35,6 +35,15 @@ fun UDiskCard(disk: VirUdisk, modifier: Modifier = Modifier, dbProject: AbsProje
                     }
                     Text("${fileSize(disk.totalSize - disk.freeSize)} / ${fileSize(disk.totalSize)}", fontSize = MaterialTheme.typography.bodySmall.fontSize)
                 }
+                if (dbProject is Project) {
+                    val manager = dbProject.uDiskManager
+                    if (manager != null) {
+                        val action = manager.getUDiskAction(disk)
+                        if (action!= null) {
+                            ActionLED(action)
+                        }
+                    }
+                }
             }
         }
     }

@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyHorizontalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import logger
 import toast
+import udiskmanager.UDiskManager
 import ui.component.ToastModel
 import ui.component.UDirCard
 import ui.component.UDiskCard
@@ -45,22 +48,33 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.locks.ReentrantLock
 
-class DBManagerUDiskScreen(private val managerUdiskRootDir: File): UIComponent<DBManagerUDiskScreen.DBBrowserScreenAction, DBManagerUDiskScreen.DBBrowserScreenState>() {
+class DBManagerUDiskScreen(private val managerUdiskRootDir: File, private val navigateToBrowseFiles: (Project) -> Unit): UIComponent<DBManagerUDiskScreen.DBBrowserScreenAction, DBManagerUDiskScreen.DBBrowserScreenState>() {
+    private val manager = UDiskManager(managerUdiskRootDir)
     class DBBrowserScreenState(
         val enableThumbnail: Boolean,
         action: (DBBrowserScreenAction) -> Unit
     ) : UIState<DBBrowserScreenAction>(action)
     sealed class DBBrowserScreenAction: UIAction() {
         data object Back: DBBrowserScreenAction()
+        data object NavigateToBrowseFiles: DBBrowserScreenAction()
     }
 
-    @OptIn(ExperimentalFoundationApi::class)
+    @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
     @Composable
     override fun UI(state: DBBrowserScreenState) {
         Column {
             GlobalTopAppBar(state)
-            Animates.VisibilityAnimates {
-                TitleBar(state)
+            Card(modifier = Modifier.padding(16.dp)) {
+                Text("UDT文件统计", modifier = Modifier.padding(16.dp))
+                if (manager.fsDBExists().not()) {
+                    Text("数据库索引不存在", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(32.dp))
+                } else {
+                    Button(onClick = {
+                        state.action(DBBrowserScreenAction.NavigateToBrowseFiles)
+                    }) {
+                        Text("进入文件浏览")
+                    }
+                }
             }
             Box(modifier = Modifier.weight(1.0f)) {
 //                Row(modifier = Modifier.fillMaxSize()) {
@@ -102,26 +116,7 @@ class DBManagerUDiskScreen(private val managerUdiskRootDir: File): UIComponent<D
 
     @Composable
     fun GlobalTopAppBar(state: DBBrowserScreenState, ) {
-//        if (dbProject is Project) {
-//            Main.GlobalTopAppBar(getTitle(state.currentUDisk), LocalMainTopTitleBarState.current!!) {
-//                IconButton(onClick = {
-//                    setCustomNameVisible(true)
-//                }) {
-//                    Icon(TablerIcons.EditCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-//                }
-//                IconButton(onClick = {
-//                    setSelectStorageDirVisible(true)
-//                }) {
-//                    Icon(TablerIcons.FolderPlus, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-//                }
-//            }
-//        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun TitleBar(state: DBBrowserScreenState) {
-        Row {
+        Main.GlobalTopAppBar("配置管理U盘", LocalMainTopTitleBarState.current!!) {
         }
     }
 
@@ -140,6 +135,16 @@ class DBManagerUDiskScreen(private val managerUdiskRootDir: File): UIComponent<D
 //                            loadDirData(udisk, newDir)
 //                        }
 //                    }
+                }
+
+                DBBrowserScreenAction.NavigateToBrowseFiles -> {
+                    val dbFile = manager.dbFile
+                    if (dbFile.exists().not()) {
+                        toast.applyShow(ToastModel(message = "数据库文件不存在", type = ToastModel.Type.Error))
+                    } else {
+                        val project = Project.create(manager.getDBFile(), manager.storageDir.absolutePath, manager)
+                        navigateToBrowseFiles(project)
+                    }
                 }
             }
         }
@@ -160,10 +165,5 @@ class DBManagerUDiskScreen(private val managerUdiskRootDir: File): UIComponent<D
     override fun Presenter(): DBBrowserScreenState {
         val presenter = remember { InnerPresenter() }
         return presenter.InnerPresenter()
-    }
-
-    @Composable
-    fun getTitle(currentUDisk: VirUdisk?): String {
-        return "管理U盘部署"
     }
 }

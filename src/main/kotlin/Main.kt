@@ -188,7 +188,11 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
         ) {
             val args = requireNotNull(it.arguments)
             val managerUDiskRootDir = TmpStorage.retrieve(args.getString("tkey_manager_udisk_root_dir")!!, File::class.java)!!
-            val dbBrowser = remember { DBManagerUDiskScreen(managerUDiskRootDir) }
+            val dbBrowser = remember { DBManagerUDiskScreen(managerUDiskRootDir, navigateToBrowseFiles = { project ->
+                logger.info("Launching DBBrowserScreen form managerUDiskRootDir: $project")
+                val key = TmpStorage.store(project)
+                state.action(AppAction.Nav(HyperShareScreen.DBBrowserScreen.name + "/$key"))
+            }) }
             dbBrowser.Main()
         }
     }

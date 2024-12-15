@@ -35,17 +35,17 @@ dependencies {
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.7.0-alpha07")
     implementation("org.jetbrains.compose.material3:material3-desktop:1.2.1")
     implementation("br.com.devsrsouza.compose.icons:tabler-icons:1.1.0")
-//    // Enables FileKit without Compose dependencies
-//    implementation("io.github.vinceglb:filekit-core:0.6.3")
-//
-//    // Enables FileKit with Composable utilities
-//    implementation("io.github.vinceglb:filekit-compose:0.6.3")
-
     // Enables FileKit without Compose dependencies
-    implementation("io.github.vinceglb:filekit-core:0.8.0")
+    implementation("io.github.vinceglb:filekit-core:0.6.3")
 
     // Enables FileKit with Composable utilities
-    implementation("io.github.vinceglb:filekit-compose:0.8.0")
+    implementation("io.github.vinceglb:filekit-compose:0.6.3")
+
+//    // Enables FileKit without Compose dependencies
+//    implementation("io.github.vinceglb:filekit-core:0.8.0")
+//
+//    // Enables FileKit with Composable utilities
+//    implementation("io.github.vinceglb:filekit-compose:0.8.0")
 }
 
 compose.desktop {

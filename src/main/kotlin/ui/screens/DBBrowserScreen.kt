@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import browser.AbsProject
+import browser.ChangeActionPack
 import browser.DBDataProvider
 import browser.Project
 import browser.models.VirDir
@@ -63,6 +64,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         val copiedFileTotalSize: Long,
         val allCopingProgress: Float,
         val enableThumbnail: Boolean,
+        val createChangeDataActionPackMode: Boolean,
         action: (DBBrowserScreenAction) -> Unit
     ) : UIState<DBBrowserScreenAction>(action)
     sealed class DBBrowserScreenAction: UIAction() {
@@ -77,6 +79,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         data class Search(val keyword: String, val involveAllDisk: Boolean): DBBrowserScreenAction()
         data class ExportFile(val virFile: VirFile, val targetDir: File): DBBrowserScreenAction()
         data class ExportFileToDesktop(val virFile: VirFile): DBBrowserScreenAction()
+        data class SwitchCreateChangeDataActionPackMode(val createChangeDataActionPackMode: Boolean): DBBrowserScreenAction()
     }
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -269,6 +272,16 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
     fun AllUdisks(state: DBBrowserScreenState) {
+        var askUdisk by remember { mutableStateOf<VirUdisk?>(null) }
+        askUdisk?.let { udisk ->
+            // 以防万一, 先检查一下manager是否存在
+            val manager = dbProject.uDiskManager
+            if (manager != null) {
+                ChangeActionPack.AskUDisk(udisk, manager) {
+                    askUdisk = null
+                }
+            }
+        }
         val disksScrollState = rememberLazyListState()
         AnimatedVisibility(state.currentParentDir?.isRoot == true || state.currentParentDir == null) {
             Animates.VisibilityAnimates {
@@ -277,7 +290,11 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                         LazyColumn(Modifier.weight(1f), state = disksScrollState) {
                             items(state.allUdisks, key = { it.udiskId }) { udisk ->
                                 UDiskCard(udisk, modifier = Modifier.animateItemPlacement().padding(6.dp).clickable {
-                                    state.action(DBBrowserScreenAction.SelectUdisk(udisk))
+                                    if (state.createChangeDataActionPackMode) {
+                                        askUdisk = udisk
+                                    } else {
+                                        state.action(DBBrowserScreenAction.SelectUdisk(udisk))
+                                    }
                                 }, dbProject)
                             }
                         }
@@ -308,6 +325,14 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                     setSelectStorageDirVisible(true)
                 }) {
                     Icon(TablerIcons.FolderPlus, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+                // 有udiskManager可以解锁额外功能
+                if (dbProject.uDiskManager != null) {
+                    IconToggleButton(state.createChangeDataActionPackMode, onCheckedChange = {
+                        state.action(DBBrowserScreenAction.SwitchCreateChangeDataActionPackMode(it))
+                    }) {
+                        Icon(TablerIcons.Activity, contentDescription = null)
+                    }
                 }
             }
         }
@@ -465,8 +490,10 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
         private var copiedFileTotalSize by mutableStateOf(0L)
         private var allCopingProgress by mutableFloatStateOf(1f)
         private var enableThumbnail by WorkDir.globalServiceConfig.enableThumbnail
+        // 是否显示创建数据包的功能, 如果为true的话，那么dbProject绝对有提供udiskManager，因为更改该布尔值的UI只会在dbProject提供udiskManager时才会显示
+        private var createChangeDataActionPackMode by mutableStateOf(false)
 
-        fun actionLink(action: DBBrowserScreenAction) {
+        private fun actionLink(action: DBBrowserScreenAction) {
             when (action) {
                 DBBrowserScreenAction.Back -> {
                     scope.launch {
@@ -598,6 +625,13 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                         toast.applyShow(ToastModel("桌面文件夹目录有问题: ${desktopDir.absolutePath}", type = ToastModel.Type.Warning))
                     }
                 }
+
+                is DBBrowserScreenAction.SwitchCreateChangeDataActionPackMode -> {
+                    createChangeDataActionPackMode = action.createChangeDataActionPackMode
+                    ioScope.launch {
+                        dbProject.uDiskManager?.saveActionPack()
+                    }
+                }
             }
         }
 
@@ -641,6 +675,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 copiedFileTotalSize,
                 allCopingProgress,
                 enableThumbnail,
+                createChangeDataActionPackMode,
                 action = { action ->
                     actionLink(action)
                 }

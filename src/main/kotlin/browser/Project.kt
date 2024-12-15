@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import udiskmanager.UDiskManager
 import utils.linkDir
 import utils.linkFile
 import java.io.File
@@ -16,12 +17,18 @@ class Project(
     private val dbFileSource: String,
     var storageDir: String?,
     override val name: String = File(dbFileSource).name,
-    override val customUDiskNames: Map<String, String> = mutableMapOf()
+    override val customUDiskNames: Map<String, String> = mutableMapOf(),
 ): AbsProject() {
     @Transient
     private val editingCustomUDiskNames = mutableStateMapOf<String, String>().apply {
         putAll(customUDiskNames)
     }
+
+    @Transient
+    private var _uDiskManager: UDiskManager? = null
+
+    override val uDiskManager: UDiskManager? get() = _uDiskManager
+
     fun setCustomUDiskName(udiskId: String, name: String?) {
         if (name == null) {
             editingCustomUDiskNames.remove(udiskId)
@@ -88,7 +95,7 @@ class Project(
         return getSourceFile(udiskId, fileId).inputStream()
     }
 
-    override suspend fun isFileLocaled(udiskId: String, fileId: String): Boolean {
+    override fun isFileLocaled(udiskId: String, fileId: String): Boolean {
         return getSourceFileOrNull(udiskId, fileId) != null
     }
 
@@ -116,7 +123,9 @@ class Project(
     }
 
     companion object {
-        fun create(dbFile: DBFile, storageDir: String? = null): Project = Project(dbFile.file.absolutePath, storageDir)
+        fun create(dbFile: DBFile, storageDir: String? = null, uDiskManager: UDiskManager? = null): Project = Project(dbFile.file.absolutePath, storageDir).apply {
+            _uDiskManager = uDiskManager
+        }
     }
 }
 
@@ -140,7 +149,7 @@ class RemoteProject(
         TODO("Not yet implemented")
     }
 
-    override suspend fun isFileLocaled(udiskId: String, fileId: String): Boolean {
+    override fun isFileLocaled(udiskId: String, fileId: String): Boolean {
         TODO("Not yet implemented")
     }
 
@@ -162,6 +171,9 @@ class RemoteProject(
         WorkDir.saveServiceConfig()
     }
 
+    override val uDiskManager: UDiskManager?
+        get() = TODO("Not yet implemented")
+
 }
 
 abstract class AbsProject {
@@ -169,10 +181,11 @@ abstract class AbsProject {
     abstract val name: String
     abstract val dbFile: DBFile
     abstract suspend fun getFileInputStream(udiskId: String, fileId: String): InputStream
-    abstract suspend fun isFileLocaled(udiskId: String, fileId: String): Boolean
+    abstract fun isFileLocaled(udiskId: String, fileId: String): Boolean
     abstract suspend fun getFileSize(udiskId: String, fileId: String): Long
     abstract fun exists(): Boolean
     abstract fun save()
     abstract fun delete()
     abstract val customUDiskNames: Map<String, String>
+    abstract val uDiskManager: UDiskManager?
 }

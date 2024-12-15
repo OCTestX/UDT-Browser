@@ -2,6 +2,7 @@ package ui.screens
 
 import LocalMainTopTitleBarState
 import WorkDir
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,14 +12,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogWindow
 import browser.DBFile
 import browser.Project
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
 import kotlinx.coroutines.launch
-import toast
 import ui.core.UIComponent
 import java.io.File
 
@@ -45,17 +45,23 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManag
                 state.action(ScannerAction.OpenDBFile(file.file))
             }
         }
-        val openManagerUDiskLauncher = rememberDirectoryPickerLauncher(
-            title = "选择管理U盘",
-        ) { selectedFile ->
-            // Handle the picked files
-            println("selectedFile: $selectedFile")
-            if (selectedFile != null) {
-                val file = selectedFile.file
-                if (file.exists()) {
-                    state.action(ScannerAction.OpenManagerUDisk(file))
-                }
-            }
+//        val openManagerUDiskLauncher = rememberDirectoryPickerLauncher(
+//            title = "选择管理U盘",
+//        ) { selectedFile ->
+//            // Handle the picked files
+//            println("selectedFile: $selectedFile")
+//            if (selectedFile != null) {
+//                val file = selectedFile.file
+//                if (file.exists()) {
+//                    state.action(ScannerAction.OpenManagerUDisk(file))
+//                }
+//            }
+//        }
+        var selectUDiskManagerDialogWindow by remember { mutableStateOf(false) }
+        selectUDiskManagerDialogWindow(selectUDiskManagerDialogWindow, closeSelectStorageDirVisible = {
+            selectUDiskManagerDialogWindow = false
+        }) { rootDir ->
+            state.action(ScannerAction.OpenManagerUDisk(rootDir))
         }
         Column {
             Main.GlobalTopAppBar("载入U盘小偷数据库", LocalMainTopTitleBarState.current!!)
@@ -76,7 +82,8 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManag
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(onClick = {
-                        openManagerUDiskLauncher.launch()
+//                        openManagerUDiskLauncher.launch()
+                        selectUDiskManagerDialogWindow = true
                     }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
                         Text("打开管理U盘")
                     }
@@ -86,6 +93,56 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManag
                         items(state.recentProjects) { project ->
                             RecentProjectCard(state, project, modifier = Modifier.width(240.dp).padding(6.dp))
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun selectUDiskManagerDialogWindow(selectStorageDirVisible: Boolean, closeSelectStorageDirVisible: () -> Unit, selectedUDiskManagerDir: (File) -> Unit) {
+//        val openManagerUDiskLauncher = rememberDirectoryPickerLauncher(
+//            title = "选择管理U盘",
+//        ) { selectedFile ->
+//            // Handle the picked files
+//            println("selectedFile: $selectedFile")
+//            if (selectedFile != null) {
+//                val file = selectedFile.file
+//                if (file.exists()) {
+//                    state.action(ScannerAction.OpenManagerUDisk(file))
+//                }
+//            }
+//        }
+        DialogWindow(onCloseRequest = {
+            closeSelectStorageDirVisible()
+        }, visible = selectStorageDirVisible) {
+            var pathStr by remember() { mutableStateOf("") }
+            Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
+                Text(
+                    "选择管理U盘根目录",
+                    modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+                    fontSize = MaterialTheme.typography.titleLarge.fontSize
+                )
+                TextField(pathStr, { pathStr = it }, modifier = Modifier.fillMaxWidth().padding(16.dp))
+                Row(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Button(onClick = {
+//                        selectedStorageDirLauncher.launch()
+                    }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                        Text("选择")
+                    }
+                    Button(onClick = {
+                        val file = File(pathStr)
+                        if (file.exists()) {
+                            selectedUDiskManagerDir(file)
+                        }
+                        closeSelectStorageDirVisible()
+                    }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                        Text("保存")
+                    }
+                    Button(onClick = {
+                        closeSelectStorageDirVisible()
+                    }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
+                        Text("取消")
                     }
                 }
             }

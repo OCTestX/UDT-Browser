@@ -23,6 +23,7 @@ object WorkDir {
 
     @Serializable
     data class ConfigFileContent(
+        val id: String,
         val currentDir: String,
         val recentProjects: List<Project> = emptyList(),
         val remoteProjects: List<RemoteProject> = emptyList(),
@@ -36,6 +37,7 @@ object WorkDir {
     )
 
     data class ServiceConfig(
+        val id: String,
         val currentDir: File,
         val recentProjects: MutableList<Project>,
         val remoteProjects: MutableList<RemoteProject>,
@@ -56,6 +58,7 @@ object WorkDir {
         }.mustFile()
 
         fun asContent() = ConfigFileContent(
+            id = id,
             currentDir = currentDir.absolutePath,
             recentProjects = recentProjects,
             currentThemeSchemeIndex = currentThemeSchemeIndex,
@@ -97,6 +100,7 @@ object WorkDir {
             }
             private fun transformConfig(content: ConfigFileContent): ServiceConfig {
                 return ServiceConfig(
+                    id = content.id,
                     File(content.currentDir),
                     content.recentProjects.toMutableList(),
                     content.remoteProjects.toMutableList(),
@@ -114,6 +118,7 @@ object WorkDir {
 
     fun createServiceConfig(rootDir: File): File {
         val configContent = ConfigFileContent(
+            id = System.nanoTime().toString(),
             currentDir = rootDir.absolutePath,
             listOf(),
             listOf(),
