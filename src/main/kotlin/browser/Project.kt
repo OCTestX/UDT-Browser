@@ -28,6 +28,9 @@ class Project(
     private var _uDiskManager: UDiskManager? = null
 
     override val uDiskManager: UDiskManager? get() = _uDiskManager
+    override val dbDataProvider: DBDataProvider by lazy {
+        DBDataProvider(dbFile)
+    }
 
     fun setCustomUDiskName(udiskId: String, name: String?) {
         if (name == null) {
@@ -173,6 +176,8 @@ class RemoteProject(
 
     override val uDiskManager: UDiskManager?
         get() = TODO("Not yet implemented")
+    override val dbDataProvider: DBDataProvider
+        get() = TODO("Not yet implemented")
 
 }
 
@@ -188,4 +193,5 @@ abstract class AbsProject {
     abstract fun delete()
     abstract val customUDiskNames: Map<String, String>
     abstract val uDiskManager: UDiskManager?
+    abstract val dbDataProvider: DBDataProvider
 }

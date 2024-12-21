@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.unit.dp
 import browser.AbsProject
+import browser.Project
 import browser.models.VirFile
 import compose.icons.TablerIcons
 import compose.icons.tablericons.CloudDownload
@@ -31,7 +32,7 @@ import java.io.IOException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UFileCard(file: VirFile, modifier: Modifier = Modifier, dbProject: AbsProject) {
+fun UFileCard(file: VirFile, modifier: Modifier = Modifier, dbProject: AbsProject, showPath: Boolean = false) {
     Card(
         modifier = Modifier.then(modifier)
     ) {
@@ -47,7 +48,12 @@ fun UFileCard(file: VirFile, modifier: Modifier = Modifier, dbProject: AbsProjec
                 }
             }
             Animates.VisibilityAnimates {
-                Text(fileSize(file.size))
+                Column {
+                    Text(fileSize(file.size))
+                    if (showPath) {
+                        Text((dbProject as Project).dbDataProvider.getFilePath(file), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    }
+                }
             }
         }
     }

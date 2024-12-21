@@ -48,7 +48,7 @@ import java.util.concurrent.locks.ReentrantLock
 
 class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserScreen.DBBrowserScreenAction, DBBrowserScreen.DBBrowserScreenState>() {
     private val dbFile = dbProject.dbFile
-    private val dbDataProvider = DBDataProvider(dbFile)
+    private val dbDataProvider = dbProject.dbDataProvider
     class DBBrowserScreenState(
         val allUdisks: List<VirUdisk>,
         val currentUDisk: VirUdisk?,
@@ -238,7 +238,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                             items(state.currentFiles, key = { it.fileId }) { file ->
                                 UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
                                     setSelectedVirFile(file)
-                                }, dbProject)
+                                }, dbProject, state.searchingMode)
                             }
                         }
                         AnimatedVisibility(state.touchOptimized) {
@@ -261,7 +261,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                         items(state.currentFiles, key = { it.fileId }) { file ->
                             UFileCard(file, modifier = Modifier.animateItemPlacement().padding(6.dp).height(80.dp).clickable {
                                 setSelectedVirFile(file)
-                            },dbProject)
+                            },dbProject, state.searchingMode)
                         }
                     }
                 }
