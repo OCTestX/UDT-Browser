@@ -9,7 +9,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -21,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import browser.AbsProject
 import browser.ChangeActionPack
-import browser.DBDataProvider
 import browser.Project
 import browser.models.VirDir
 import browser.models.VirFile
@@ -131,10 +133,10 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                 if (it) {
                     Row {
                         LinearProgressIndicator(progress = state.allCopingProgress, modifier = Modifier.weight(1.0f).align(Alignment.CenterVertically))
-                        Text(fileSize(state.needCopyFileTotalSize - state.copiedFileTotalSize), modifier = Modifier.align(Alignment.CenterVertically))
+                        Text(fileSize(state.needCopyFileTotalSize - state.copiedFileTotalSize), modifier = Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodySmall)
                     }
                 } else {
-                    Text("无复制任务", modifier = Modifier.align(Alignment.CenterVertically))
+                    Text("无复制任务", modifier = Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -154,7 +156,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                         }, modifier = Modifier.align(Alignment.CenterVertically)) {
                             Icon(rememberVectorPainter(TablerIcons.ArrowBack), contentDescription = null)
                         }
-                        Text("文件信息", modifier = Modifier.align(Alignment.CenterVertically))
+                        Text("文件信息", modifier = Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.titleLarge)
                     }
                     Row(Modifier.fillMaxWidth()) {
                         Icon(TablerIcons.File, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 6.dp, top = 12.dp, bottom = 12.dp).align(Alignment.CenterVertically))
@@ -162,7 +164,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                             Column(Modifier.padding(6.dp)) {
                                 Row(Modifier.fillMaxWidth()) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(selectedVirFile.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                                        Text(selectedVirFile.name, fontSize = MaterialTheme.typography.titleMedium.fontSize, style = MaterialTheme.typography.titleLarge)
                                     }
                                 }
                                 Spacer(Modifier.height(12.dp))
@@ -191,13 +193,13 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                             state.action(DBBrowserScreenAction.ExportFileToDesktop(selectedVirFile))
                             unSelectedVirFile()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("发送到桌面")
+                            Text("发送到桌面", style = MaterialTheme.typography.bodyMedium)
                         }
                         Button(onClick = {
                             selectExportTargetDirLauncher.launch()
                             unSelectedVirFile()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("导出")
+                            Text("导出", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -352,14 +354,14 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                     Text(
                         "选择文件存储库位置",
                         modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
-                        fontSize = MaterialTheme.typography.titleLarge.fontSize
+                        style = MaterialTheme.typography.titleLarge
                     )
                     TextField(pathStr, { pathStr = it }, modifier = Modifier.fillMaxWidth().padding(16.dp))
                     Row(Modifier.fillMaxWidth().padding(16.dp)) {
                         Button(onClick = {
                             selectedStorageDirLauncher.launch()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("选择")
+                            Text("选择", style = MaterialTheme.typography.bodyMedium)
                         }
                         Button(onClick = {
                             val file = File(pathStr)
@@ -369,12 +371,12 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                             }
                             closeSelectStorageDirVisible()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("保存")
+                            Text("保存", style = MaterialTheme.typography.bodyMedium)
                         }
                         Button(onClick = {
                             closeSelectStorageDirVisible()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("取消")
+                            Text("取消", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -394,19 +396,19 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                     mutableStateOf(dbProject.getCustomUDiskName(udiskId?:"未知u盘")?: rawName)
                 }
                 Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
-                    Text("设置自定义名称", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                    Text("设置自定义名称", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleLarge)
                     TextField(customName, { customName = it }, modifier = Modifier.fillMaxWidth().padding(16.dp))
                     Row(Modifier.fillMaxWidth().padding(16.dp)) {
                         Button(onClick = {
                             state.action(DBBrowserScreenAction.ChangeCustomName(customName))
                             closeCustomNameVisible()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("保存")
+                            Text("保存", style = MaterialTheme.typography.bodyMedium)
                         }
                         Button(onClick = {
                             closeCustomNameVisible()
                         }, modifier = Modifier.padding(horizontal = 8.dp).weight(1f)) {
-                            Text("取消")
+                            Text("取消", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -467,7 +469,7 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                         }
                         val path = remember(state.currentParentDir) { state.currentParentDir?.path?:"/" }
                         AnimatedContent(path, modifier = Modifier.weight(1f).align(Alignment.CenterVertically)) { currentPath ->
-                            Text(currentPath, fontSize = MaterialTheme.typography.titleSmall.fontSize, color = MaterialTheme.colorScheme.primary)
+                            Text(currentPath, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }

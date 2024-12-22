@@ -30,7 +30,7 @@ fun UDirCard(dir: VirDir, modifier: Modifier = Modifier, dbDataProvider: DBDataP
             Row(Modifier.fillMaxWidth().weight(1f)) {
                 Icon(TablerIcons.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
-                    Text(dir.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                    Text(dir.name, style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -46,7 +46,7 @@ fun UDirCard(dir: VirDir, modifier: Modifier = Modifier, dbDataProvider: DBDataP
             }
             Animates.VisibilityAnimates {
                 Column {
-                    Text(fileSize(size))
+                    Text(fileSize(size), style = MaterialTheme.typography.bodyMedium)
                     AnimatedVisibility(countingSize) {
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                     }

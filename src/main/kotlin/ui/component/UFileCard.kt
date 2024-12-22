@@ -41,7 +41,7 @@ fun UFileCard(file: VirFile, modifier: Modifier = Modifier, dbProject: AbsProjec
             Row(Modifier.fillMaxWidth().weight(1f)) {
                 Icon(file, dbProject)
                 Column(Modifier.weight(1f)) {
-                    Text(file.name, fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                    Text(file.name, style = MaterialTheme.typography.labelMedium)
                 }
                 AnimatedVisibility(fileExits.not()) {
                     Icon(TablerIcons.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.error)
@@ -49,7 +49,7 @@ fun UFileCard(file: VirFile, modifier: Modifier = Modifier, dbProject: AbsProjec
             }
             Animates.VisibilityAnimates {
                 Column {
-                    Text(fileSize(file.size))
+                    Text(fileSize(file.size), style = MaterialTheme.typography.bodyMedium)
                     if (showPath) {
                         Text((dbProject as Project).dbDataProvider.getFilePath(file), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     }

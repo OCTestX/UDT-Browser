@@ -28,12 +28,12 @@ fun UDiskCard(disk: VirUdisk, modifier: Modifier = Modifier, dbProject: AbsProje
                 Column(Modifier.weight(1f)) {
                     if (dbProject is Project) {
                         AnimatedContent(dbProject.getCustomUDiskNameState(disk.udiskId)?: disk.name) {
-                            Text(it, fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                            Text(it, style = MaterialTheme.typography.labelLarge)
                         }
                     } else {
-                        Text(disk.name, fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        Text(disk.name, style = MaterialTheme.typography.labelLarge)
                     }
-                    Text("${fileSize(disk.totalSize - disk.freeSize)} / ${fileSize(disk.totalSize)}", fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                    Text("${fileSize(disk.totalSize - disk.freeSize)} / ${fileSize(disk.totalSize)}", style = MaterialTheme.typography.bodyMedium)
                 }
                 if (dbProject is Project) {
                     val manager = dbProject.uDiskManager
