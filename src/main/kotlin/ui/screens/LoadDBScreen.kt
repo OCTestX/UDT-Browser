@@ -67,7 +67,7 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManag
             Main.GlobalTopAppBar("载入U盘小偷数据库", LocalMainTopTitleBarState.current!!)
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(Modifier.align(Alignment.Center)) {
-                    Text("打开数据项目", fontSize = 24.sp, modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally))
+                    Text("打开数据项目", fontSize = 24.sp, modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.headlineLarge)
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = {
                         importDBFileLauncher.launch()

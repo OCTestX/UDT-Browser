@@ -1,3 +1,4 @@
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import browser.Project
@@ -34,6 +35,7 @@ object WorkDir {
         val desktopDirLocation: String,
         val windowSize: Pair<Int, Int>,
         val enableThumbnail: Boolean,
+        val typographyName: String,
     )
 
     data class ServiceConfig(
@@ -47,7 +49,8 @@ object WorkDir {
         val touchOptimized: MutableState<Boolean>,
         val desktopDirLocation: MutableState<String>,
         val windowSize: MutableState<Pair<Int, Int>>,
-        val enableThumbnail: MutableState<Boolean>
+        val enableThumbnail: MutableState<Boolean>,
+        val typographyName: MutableState<String>,
     ) {
         val tempDir = File(currentDir, "Temp").mustDir()
         val cacheDir = File(currentDir, "Cache").mustDir()
@@ -67,7 +70,8 @@ object WorkDir {
             touchOptimized = touchOptimized.value,
             desktopDirLocation = desktopDirLocation.value,
             windowSize = windowSize.value,
-            enableThumbnail = enableThumbnail.value
+            enableThumbnail = enableThumbnail.value,
+            typographyName = typographyName.value,
         )
 
         //
@@ -110,7 +114,8 @@ object WorkDir {
                     mutableStateOf(content.touchOptimized),
                     mutableStateOf(content.desktopDirLocation),
                     mutableStateOf(content.windowSize),
-                    mutableStateOf(content.enableThumbnail)
+                    mutableStateOf(content.enableThumbnail),
+                    mutableStateOf(content.typographyName),
                 )
             }
         }
@@ -128,7 +133,8 @@ object WorkDir {
             true,
             "",
             Pair(1200, 800),
-            false
+            false,
+            "Default",
         )
         val configFile = File(rootDir, "serviceConfig.json")
         configFile.writeText(Json.encodeToString(configContent), Charset.forName("UTF-8"))
