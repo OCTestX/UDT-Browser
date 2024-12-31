@@ -243,14 +243,12 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                                 }, dbProject, state.searchingMode)
                             }
                         }
-                        AnimatedVisibility(state.touchOptimized) {
-                            // 滚动条
-                            VerticalScrollbar(
-                                modifier = Modifier.fillMaxHeight(),
-                                adapter = rememberScrollbarAdapter(listDirsAndFilesScrollState),
-                                style = LocalScrollbarStyle.current.copy(unhoverColor = MaterialTheme.colorScheme.primary, hoverColor = MaterialTheme.colorScheme.inversePrimary)
-                            )
-                        }
+                        // 滚动条
+                        VerticalScrollbar(
+                            modifier = Modifier.fillMaxHeight(),
+                            adapter = rememberScrollbarAdapter(listDirsAndFilesScrollState),
+                            style = LocalScrollbarStyle.current.copy(unhoverColor = MaterialTheme.colorScheme.primary, hoverColor = MaterialTheme.colorScheme.inversePrimary)
+                        )
                     }
                 } else {
                     val listDirsAndFilesScrollState = rememberLazyGridState()

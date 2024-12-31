@@ -148,7 +148,7 @@ object Main: UIComponent<Main.AppAction, Main.AppState>() {
         var currentColorScheme by remember { mutableStateOf(Colors.ThemeColorScheme.schemes[currentColorSchemeIterable.currentIndex]) }
         val availableTypography = mapOf(
             "Default" to UIAdditional.Typographies.DefaultTypography,
-            "Mi Sans" to UIAdditional.Typographies.MiSansTypography,
+            "Mi Sans" to UIAdditional.Typographies.DefaultTypography,// TODO
         )
         var currentTypography by remember { mutableStateOf(WorkDir.globalServiceConfig.typographyName.value to availableTypography[WorkDir.globalServiceConfig.typographyName.value]!!) }
         val canNavigateBack = navController.previousBackStackEntry != null

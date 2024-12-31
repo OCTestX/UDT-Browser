@@ -41,11 +41,7 @@ dependencies {
     // Enables FileKit with Composable utilities
     implementation("io.github.vinceglb:filekit-compose:0.6.3")
 
-//    // Enables FileKit without Compose dependencies
-//    implementation("io.github.vinceglb:filekit-core:0.8.0")
-//
-//    // Enables FileKit with Composable utilities
-//    implementation("io.github.vinceglb:filekit-compose:0.8.0")
+    implementation("com.github.skydoves:orbital:0.4.0")
 }
 
 compose.desktop {
