@@ -507,7 +507,9 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                     }
                 }
                 is DBBrowserScreenAction.SelectUdisk -> {
-                    currentUDisk = action.udisk
+                    ioScope.launch {
+                        currentUDisk = action.udisk
+                    }
                 }
                 is DBBrowserScreenAction.SwitchDir -> {
                     scope.launch {
@@ -557,7 +559,14 @@ class DBBrowserScreen(private val dbProject: AbsProject): UIComponent<DBBrowserS
                         }
                     } else {
                         ioScope.launch {
-                            loadDirData(currentUDisk!!, currentParentDir!!)
+                            val tmpUDisk = currentUDisk
+                            if (tmpUDisk != null) {
+                                val rootDir = loadRootDir(tmpUDisk)
+                                currentParentDir = rootDir
+                                loadDirData(tmpUDisk, rootDir)
+                            } else {
+                                throw NullPointerException("currentUDisk is null!")
+                            }
                         }
                     }
                 }

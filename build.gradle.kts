@@ -41,7 +41,18 @@ dependencies {
     // Enables FileKit with Composable utilities
     implementation("io.github.vinceglb:filekit-compose:0.6.3")
 
+    // TODO 动画库
     implementation("com.github.skydoves:orbital:0.4.0")
+
+//    // TODO 拖动选择库
+//    // Includes the core functionality along with all of the optional modules
+//    implementation("com.dragselectcompose:dragselect:2.4.1")
+//    // Core functionality
+//    implementation("com.dragselectcompose:core:2.4.1")
+//    // Optional extensions for adding semantics and toggle Modifiers to Grid items
+//    implementation("com.dragselectcompose:extensions:2.4.1")
+//    // Optional wrappers around LazyGrid that implement the selection UI for you
+//    implementation("com.dragselectcompose:grid:2.4.1")
 }
 
 compose.desktop {
