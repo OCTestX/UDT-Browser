@@ -74,12 +74,12 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManag
                     }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
                         Text("选择数据库文件")
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = {
-                        TODO()
-                    }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
-                        Text("导入远程服务器")
-                    }
+//                    Spacer(modifier = Modifier.height(8.dp))
+//                    Button(onClick = {
+//                        TODO()
+//                    }, modifier = Modifier.align(Alignment.CenterHorizontally).width(320.dp)) {
+//                        Text("导入远程服务器")
+//                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(onClick = {
 //                        openManagerUDiskLauncher.launch()
@@ -155,7 +155,8 @@ class LoadDBScreen(val launchDBBrowserScreen: (Project) -> Unit, val launchManag
         Card(modifier = modifier, onClick = {
             state.action(ScannerAction.OpenRecentProject(project))
         }) {
-            Text(text = project.name, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary)
+            Text(text = project.name, modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text(text = project.dbFile.file.absolutePath, modifier = Modifier.padding(6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
 
